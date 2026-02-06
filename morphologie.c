@@ -3,6 +3,15 @@
 #include <string.h>
 #include "morphologie.h"
 
+Scheme creerScheme(const char* nom, const char* pattern) {
+    Scheme s;
+    strncpy(s.nom, nom, MAX_LEN - 1);
+    s.nom[MAX_LEN - 1] = '\0';
+    strncpy(s.pattern, pattern, MAX_LEN - 1);
+    s.pattern[MAX_LEN - 1] = '\0';
+    return s;
+}
+
 void ajouterOuIncrementerDerive(Racine* r, const char* mot) {
     Derive* d = r->derives;
     while (d) {
@@ -34,28 +43,28 @@ void afficherDerivesRacine(const Racine* r) {
     }
 }
 
-// Ici on suppose que racine est une chaîne de 3 "lettres" logiques.
-// En pratique avec l'arabe/UTF-8, tu adapteras.
 char* genererMot(const char* racine, const Scheme* sch) {
-    char r1 = racine[0];
-    char r2 = racine[1];
-    char r3 = racine[2];
+    // FIX UTF-8 ARABE : chaque lettre = 2 octets (ك=2, ت=2, ب=2 → strlen=6)
+    if (strlen(racine) != 6) return NULL;  // Trilitère stricte
+    
+    char r1[3] = {racine[0], racine[1], '\0'};  // ك
+    char r2[3] = {racine[2], racine[3], '\0'};  // ت  
+    char r3[3] = {racine[4], racine[5], '\0'};  // ب
 
-    char buffer[2 * MAX_LEN];
+    char buffer[4 * MAX_LEN] = {0};
     int k = 0;
 
-    for (int i = 0; sch->pattern[i] != '\0'; ++i) {
+    for (int i = 0; sch->pattern[i]; i++) {
         char c = sch->pattern[i];
-        if (c == '1') buffer[k++] = r1;
-        else if (c == '2') buffer[k++] = r2;
-        else if (c == '3') buffer[k++] = r3;
-        else buffer[k++] = c;
+        if (c == '1') { strcpy(buffer+k, r1); k += 2; }
+        else if (c == '2') { strcpy(buffer+k, r2); k += 2; }
+        else if (c == '3') { strcpy(buffer+k, r3); k += 2; }
+        else { buffer[k++] = c; }
     }
     buffer[k] = '\0';
 
-    char* res = (char*)malloc((k + 1) * sizeof(char));
-    if (!res) return NULL;
-    strcpy(res, buffer);
+    char* res = malloc(strlen(buffer) + 1);
+    if (res) strcpy(res, buffer);
     return res;
 }
 
@@ -80,7 +89,7 @@ void genererFamilleMorphologique(NoeudArbre* arbre, TableHash* t, const char* ra
     }
 }
 
-int validerMotPourRacine(TableHash* t, const char* mot, const char* racineStr, Scheme** schTrouve) {
+int validerMotPourRacine(NoeudArbre* arbre, TableHash* t, const char* mot, const char* racineStr, Scheme** schTrouve) {
     if (schTrouve) *schTrouve = NULL;
     for (int i = 0; i < TAILLE_TABLE; ++i) {
         EntreeHash* e = t->cases[i];
@@ -88,6 +97,8 @@ int validerMotPourRacine(TableHash* t, const char* mot, const char* racineStr, S
             char* candidate = genererMot(racineStr, &e->valeur);
             if (candidate && strcmp(candidate, mot) == 0) {
                 if (schTrouve) *schTrouve = &e->valeur;
+                NoeudArbre* n = rechercherRacine(arbre, racineStr);
+                if (n) ajouterOuIncrementerDerive(&n->data, mot);  // Mise à jour auto
                 free(candidate);
                 return 1;
             }

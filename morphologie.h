@@ -5,7 +5,7 @@
 #include "arbre.h"
 #include "hash.h"
 
-// Crée un schème à partir d'un nom (ex: "maf3oul") et d'un pattern (ex: "ma1u2u3")
+// Crée un schème à partir d'un nom (ex: "مفعول") et d'un pattern (ex: "م12و3")
 Scheme creerScheme(const char* nom, const char* pattern);
 
 // Ajoute ou incrémente un dérivé pour une racine
@@ -15,7 +15,7 @@ void ajouterOuIncrementerDerive(Racine* r, const char* mot);
 void afficherDerivesRacine(const Racine* r);
 
 // Génère un mot à partir d'une racine et d'un schème
-// racine est supposée avoir 3 "consonnes" logiques (ex: "ktb")
+// racine est supposée avoir 3 "consonnes" logiques (ex: "كتب")
 char* genererMot(const char* racine, const Scheme* sch);
 
 // Génère et affiche tous les dérivés d'une racine pour tous les schèmes de la table
@@ -23,6 +23,6 @@ void genererFamilleMorphologique(NoeudArbre* arbre, TableHash* t, const char* ra
 
 // Vérifie si un mot appartient à une racine (OUI/NON)
 // Retourne 1 si oui, 0 sinon, et met *schTrouve sur le schème reconnu si trouvé
-int validerMotPourRacine(TableHash* t, const char* mot, const char* racine, Scheme** schTrouve);
+int validerMotPourRacine(NoeudArbre* arbre, TableHash* t, const char* mot, const char* racine, Scheme** schTrouve);
 
 #endif

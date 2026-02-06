@@ -6,16 +6,13 @@
 // Crée une table de hachage vide
 TableHash* creerTableHash();
 
-// Fonction de hachage (interne)
-unsigned int hacher(const char* cle);
-
 // Insère un schème dans la table
 void insererScheme(TableHash* t, Scheme s);
 
 // Cherche un schème par nom, retourne pointeur ou NULL
 Scheme* chercherScheme(TableHash* t, const char* nom);
 
-// Supprime un schème (optionnel pour début)
+// Supprime un schème
 void supprimerScheme(TableHash* t, const char* nom);
 
 // Affiche tous les schèmes de la table
