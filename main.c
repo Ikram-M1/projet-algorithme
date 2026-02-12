@@ -8,6 +8,14 @@
 #include "hash.h"
 #include "morphologie.h"
 
+// Déclaration de la fonction GUI (à implémenter dans gui.c)
+// extern void launch_gui(int argc, char *argv[], Contexte *ctx);   // déclaration
+
+// // Dans le main, quand l'utilisateur choisit le mode GUI :
+// if (mode == 2) {
+//     launch_gui(argc, argv, &ctx);
+//     return 0;
+// }
 // Charge les racines (en arabe ou translittération) depuis racines.txt
 void chargerRacinesDepuisFichier(NoeudArbre** arbre, const char* nomFichier) {
     FILE* f = fopen(nomFichier, "r");
@@ -18,7 +26,6 @@ void chargerRacinesDepuisFichier(NoeudArbre** arbre, const char* nomFichier) {
 
     char ligne[MAX_LEN];
     while (fgets(ligne, sizeof(ligne), f)) {
-        // enlever \n
         ligne[strcspn(ligne, "\r\n")] = '\0';
         if (strlen(ligne) > 0) {
             *arbre = insererRacine(*arbre, ligne);
@@ -30,17 +37,16 @@ void chargerRacinesDepuisFichier(NoeudArbre** arbre, const char* nomFichier) {
 
 // Initialisation de quelques schèmes de base (noms + patterns en arabe)
 void initialiserSchemesDeBase(TableHash* t) {
-    // Exemples du PDF/images (unvocalisés)
-    Scheme s1 = creerScheme("فاعل", "1ا23");      // → كاتب pour كتب
+    Scheme s1 = creerScheme("فاعل", "1ا23");
     insererScheme(t, s1);
 
-    Scheme s2 = creerScheme("مفعول", "م12و3");    // → مكتوب
+    Scheme s2 = creerScheme("مفعول", "م12و3");
     insererScheme(t, s2);
 
-    Scheme s3 = creerScheme("افتعل", "ا1ت23");    // → اكتب approx
+    Scheme s3 = creerScheme("افتعل", "ا1ت23");
     insererScheme(t, s3);
 
-    Scheme s4 = creerScheme("تفعيل", "ت12ي3");    // → تكتيب approx
+    Scheme s4 = creerScheme("تفعيل", "ت12ي3");
     insererScheme(t, s4);
 }
 
@@ -62,9 +68,25 @@ void afficherMenu() {
     printf("Votre choix: ");
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     setlocale(LC_ALL, "");  // pour aider l'affichage UTF-8
 
+    printf("Choisissez le mode :\n");
+    printf("1) Mode console\n");
+    printf("2) Mode graphique (interface GTK)\n");
+    printf("Votre choix : ");
+
+    int mode;
+    if (scanf("%d", &mode) != 1) {
+        mode = 1;  // par défaut console
+    }
+
+    // Si mode graphique : lancer l'interface GTK
+    // if (mode == 2) {
+    //     return lancer_gui(argc, argv);
+    // }
+
+    // Sinon : mode console (ton code original)
     Contexte ctx;
     ctx.racines = NULL;
     ctx.schemes = creerTableHash();
@@ -72,7 +94,7 @@ int main() {
     initialiserSchemesDeBase(ctx.schemes);
 
     int choix;
-    char buffer[MAX_LEN];  // Buffer général
+    char buffer[MAX_LEN];
     char mot[MAX_LEN];
 
     do {
@@ -94,16 +116,16 @@ int main() {
                 afficherRacines(ctx.racines);
                 break;
 
-           case 3: {
-    const char* racineChoisie = selectionnerRacineParNumero(ctx.racines);
-    if (racineChoisie) {
-        printf("\nGénération des dérivés pour la racine sélectionnée : %s\n", racineChoisie);
-        genererFamilleMorphologique(ctx.racines, ctx.schemes, racineChoisie);
-    } else {
-        printf("Aucune racine sélectionnée.\n");
-    }
-    break;
-}
+            case 3: {
+                const char* racineChoisie = selectionnerRacineParNumero(ctx.racines);
+                if (racineChoisie) {
+                    printf("\nGénération des dérivés pour la racine sélectionnée : %s\n", racineChoisie);
+                    genererFamilleMorphologique(ctx.racines, ctx.schemes, racineChoisie);
+                } else {
+                    printf("Aucune racine sélectionnée.\n");
+                }
+                break;
+            }
 
             case 4: {
                 printf("Entrer la racine: ");
