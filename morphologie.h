@@ -25,4 +25,7 @@ void genererFamilleMorphologique(NoeudArbre* arbre, TableHash* t, const char* ra
 // Retourne 1 si oui, 0 sinon, et met *schTrouve sur le schème reconnu si trouvé
 int validerMotPourRacine(NoeudArbre* arbre, TableHash* t, const char* mot, const char* racine, Scheme** schTrouve);
 
+// Ajouter cette ligne
+int decomposerMot(NoeudArbre* arbre, TableHash* schemes, const char* mot, 
+                  char* racineTrouvee, char* schemeTrouve);
 #endif

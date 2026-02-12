@@ -122,16 +122,16 @@ NoeudArbre* rechercherRacine(NoeudArbre* racine, const char* cle) {
 // Affichage trié alphabétiquement (collecte + qsort)
 // -----------------------------------------------------------------------------
 
-static int comparerRacines(const void *a, const void *b) {
+int comparerRacines(const void *a, const void *b) {
     return strcmp(*(const char **)a, *(const char **)b);
 }
 
-static int compterNoeuds(NoeudArbre *n) {
+int compterNoeuds(NoeudArbre *n) {
     if (n == NULL) return 0;
     return 1 + compterNoeuds(n->gauche) + compterNoeuds(n->droite);
 }
 
-static void remplirTableau(NoeudArbre *n, const char **tab, int *idx) {
+void remplirTableau(NoeudArbre *n, const char **tab, int *idx) {
     if (n == NULL) return;
     remplirTableau(n->gauche, tab, idx);
     tab[*idx] = n->data.racine;

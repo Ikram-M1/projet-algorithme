@@ -18,6 +18,9 @@ void afficherRacines(NoeudArbre* racine);
 
 // Libère toute la mémoire de l'arbre
 void libererArbre(NoeudArbre* racine);
+
 const char* selectionnerRacineParNumero(NoeudArbre* racine);
 
+int compterNoeuds(NoeudArbre *n);
+void remplirTableau(NoeudArbre *n, const char **tab, int *idx);
 #endif

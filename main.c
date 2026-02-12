@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <locale.h>
+#include <windows.h>
 
 #include "types.h"
 #include "arbre.h"
@@ -58,11 +59,18 @@ void afficherMenu() {
     printf("8) Modifier un schème\n");
     printf("9) Supprimer un schème\n");
     printf("10) Afficher les dérivés d'une racine\n");
+    printf("11) Décomposer un mot (racine + schème)\n");
     printf("0) Quitter\n");
     printf("Votre choix: ");
 }
 
 int main() {
+
+    // Activer UTF-8 côté C et côté console Windows
+    setlocale(LC_ALL, ".UTF8");              // locale C en UTF-8 [web:216]
+    SetConsoleOutputCP(CP_UTF8);             // sortie console UTF-8 [web:217]
+    SetConsoleCP(CP_UTF8);
+
     setlocale(LC_ALL, "");  // pour aider l'affichage UTF-8
 
     Contexte ctx;
@@ -173,6 +181,31 @@ int main() {
                 if (n) afficherDerivesRacine(&n->data);
                 else printf("Racine introuvable.\n");
                 break;
+
+                        case 11: {
+                char mot[MAX_LEN];
+                char racine_trouvee[MAX_LEN] = {0};
+                char scheme_trouve[MAX_LEN]  = {0};
+
+                printf("\nEntrez le mot à décomposer : ");
+                scanf("%s", mot);
+
+                if (decomposerMot(ctx.racines, ctx.schemes, mot, racine_trouvee, scheme_trouve)) {
+                    printf("\nAnalyse du mot « %s » :\n", mot);
+                    printf("  → Racine détectée : %s\n", racine_trouvee);
+                    printf("  → Schème utilisé  : %s\n", scheme_trouve);
+                    // Optionnel : on peut aussi incrémenter la fréquence
+                    NoeudArbre* n = rechercherRacine(ctx.racines, racine_trouvee);
+                    if (n) {
+                        ajouterOuIncrementerDerive(&n->data, mot);
+                    }
+                } else {
+                    printf("\nLe mot « %s » n'a pas pu être décomposé.\n", mot);
+                    printf("   → Aucune racine + schème correspondant n'a été trouvée.\n");
+                }
+                printf("\n");
+                break;
+            }
 
             case 0:
                 printf("Au revoir.\n");

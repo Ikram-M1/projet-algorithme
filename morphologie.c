@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "morphologie.h"
+#include "arbre.h"
 
 Scheme creerScheme(const char* nom, const char* pattern) {
     Scheme s;
@@ -106,5 +107,61 @@ int validerMotPourRacine(NoeudArbre* arbre, TableHash* t, const char* mot, const
             e = e->suivant;
         }
     }
+
+    
+   return 0;
+}
+
+/**
+ * Tente de décomposer un mot donné en racine + schème
+ * Retourne 1 si trouvé, 0 sinon
+ * racineTrouvee et schemeTrouve doivent être des buffers de taille MAX_LEN
+ */
+int decomposerMot(NoeudArbre* arbre, TableHash* schemes, const char* mot,
+                  char* racineTrouvee, char* schemeTrouve)
+{
+    if (!mot || !*mot || !arbre || !schemes) {
+        return 0;
+    }
+
+    // On va parcourir toutes les racines existantes
+    // (cette approche est acceptable si le nombre de racines reste < 5000–10000)
+    int count = compterNoeuds(arbre);
+    if (count == 0) return 0;
+
+    const char** racines = malloc(count * sizeof(const char*));
+    if (!racines) return 0;
+
+    int idx = 0;
+    remplirTableau(arbre, racines, &idx);
+
+    // Pas besoin de trier ici → on teste toutes les racines
+    for (int i = 0; i < count; i++) {
+        const char* racine_cand = racines[i];
+
+        // Pour chaque racine candidate, on teste tous les schèmes
+        for (int j = 0; j < TAILLE_TABLE; j++) {
+            EntreeHash* e = schemes->cases[j];
+            while (e) {
+                char* genere = genererMot(racine_cand, &e->valeur);
+                if (genere && strcmp(genere, mot) == 0) {
+                    // On a trouvé !
+                    strncpy(racineTrouvee, racine_cand, MAX_LEN - 1);
+                    racineTrouvee[MAX_LEN - 1] = '\0';
+                    
+                    strncpy(schemeTrouve, e->valeur.nom, MAX_LEN - 1);
+                    schemeTrouve[MAX_LEN - 1] = '\0';
+
+                    free(genere);
+                    free(racines);
+                    return 1;
+                }
+                if (genere) free(genere);
+                e = e->suivant;
+            }
+        }
+    }
+
+    free(racines);
     return 0;
 }
