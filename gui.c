@@ -1,4 +1,8 @@
-// gui.c — INTERFACE GTK3 COMPLÈTE AVEC 2 NOUVEAUX BOUTONS
+// gui.c — INTERFACE GTK3 MODIFIÉE
+// CHANGEMENTS:
+// 1. Suppression complète de la barre "Racine de référence"
+// 2. Bouton "Valider mot" ouvre une popup avec champ + menu déroulant
+
 #include <gtk/gtk.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +20,152 @@ extern Contexte ctx;
 
 // Widgets globaux
 static GtkWidget *result_text = NULL;
-static GtkWidget *combo_racines = NULL;
+
+// -----------------------------------------------------------------------------
+// Style CSS Moderne pour l'interface
+// -----------------------------------------------------------------------------
+
+static void appliquer_style_moderne(void) {
+    GtkCssProvider *provider = gtk_css_provider_new();
+   
+    const gchar *css_data =
+        "/* ═══════════════════════════════════════════════════════════ */\n"
+        "/* 🎨 DESIGN COMPACT ET COULEURS PASTEL DOUCES                 */\n"
+        "/* ═══════════════════════════════════════════════════════════ */\n"
+        "\n"
+        "window {\n"
+        " background: linear-gradient(145deg, #f5f7fa 0%, #fef5f8 100%);\n"
+        "}\n"
+        "\n"
+        "label#header {\n"
+        " color: #5a4a6f;\n"
+        " text-shadow: 1px 1px 2px rgba(0,0,0,0.08);\n"
+        " padding: 8px 0;\n"
+        " font-size: 110%;\n"
+        "}\n"
+        "\n"
+        "entry {\n"
+        " border-radius: 6px;\n"
+        " border: 1px solid #e0e0e0;\n"
+        " padding: 6px 10px;\n"
+        " font-size: 13px;\n"
+        " background: white;\n"
+        " min-height: 32px;\n"
+        " box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);\n"
+        "}\n"
+        "\n"
+        "entry:focus {\n"
+        " border-color: #b4a7d6;\n"
+        " box-shadow: 0 0 0 2px rgba(180,167,214,0.2);\n"
+        "}\n"
+        "\n"
+        "combobox, combobox button {\n"
+        " border-radius: 6px;\n"
+        " border: 1px solid #e0e0e0;\n"
+        " background: white;\n"
+        " padding: 5px 10px;\n"
+        " min-height: 32px;\n"
+        "}\n"
+        "\n"
+        "button {\n"
+        " border: none;\n"
+        " border-radius: 6px;\n"
+        " padding: 5px 12px;\n"
+        " font-weight: 500;\n"
+        " font-size: 12px;\n"
+        " min-height: 30px;\n"
+        " transition: all 0.2s ease;\n"
+        " box-shadow: 0 1px 3px rgba(0,0,0,0.08);\n"
+        " background: #f5f5f5;\n"
+        " color: #4a4a4a;\n"
+        "}\n"
+        "\n"
+        "button:hover {\n"
+        " background: #ebebeb;\n"
+        " box-shadow: 0 2px 5px rgba(0,0,0,0.12);\n"
+        " transform: translateY(-1px);\n"
+        "}\n"
+        "\n"
+        "button:active {\n"
+        " background: #e0e0e0;\n"
+        " transform: translateY(0);\n"
+        "}\n"
+        "\n"
+        "/* Couleurs pastel douces et apaisantes */\n"
+        "button.success {\n"
+        " background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);\n"
+        " color: #2d5f3f;\n"
+        "}\n"
+        "button.success:hover {\n"
+        " background: linear-gradient(135deg, #c3e6cb 0%, #b1dfbb 100%);\n"
+        "}\n"
+        "\n"
+        "button.warning {\n"
+        " background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);\n"
+        " color: #856404;\n"
+        "}\n"
+        "button.warning:hover {\n"
+        " background: linear-gradient(135deg, #ffeaa7 0%, #fdd877 100%);\n"
+        "}\n"
+        "\n"
+        "button.info {\n"
+        " background: linear-gradient(135deg, #e7d4f3 0%, #d8bfea 100%);\n"
+        " color: #5a2e7a;\n"
+        "}\n"
+        "button.info:hover {\n"
+        " background: linear-gradient(135deg, #d8bfea 0%, #c9aae0 100%);\n"
+        "}\n"
+        "\n"
+        "button.danger {\n"
+        " background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);\n"
+        " color: #721c24;\n"
+        "}\n"
+        "button.danger:hover {\n"
+        " background: linear-gradient(135deg, #f5c6cb 0%, #f1b0b7 100%);\n"
+        "}\n"
+        "\n"
+        "textview {\n"
+        " border-radius: 8px;\n"
+        " padding: 10px;\n"
+        " font-family: 'Monospace', 'Courier New';\n"
+        " font-size: 12px;\n"
+        " background: white;\n"
+        " color: #2c2c2c;\n"
+        " box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);\n"
+        "}\n"
+        "\n"
+        "scrolledwindow {\n"
+        " border-radius: 8px;\n"
+        " border: 1px solid #e5e5e5;\n"
+        " background: white;\n"
+        " box-shadow: 0 2px 6px rgba(0,0,0,0.06);\n"
+        "}\n"
+        "\n"
+        ".section-frame {\n"
+        " border: 1px solid #e5e5e5;\n"
+        " border-radius: 8px;\n"
+        " background: rgba(250,250,250,0.7);\n"
+        " padding: 6px;\n"
+        " margin: 3px 0;\n"
+        "}\n"
+        "\n"
+        ".section-title {\n"
+        " color: #6b6b6b;\n"
+        " font-weight: bold;\n"
+        " font-size: 95%;\n"
+        " margin-bottom: 4px;\n"
+        "}\n"
+        "\n"
+        "* { direction: rtl; text-align: right; }\n";
+
+    gtk_css_provider_load_from_data(provider, css_data, -1, NULL);
+    gtk_style_context_add_provider_for_screen(
+        gdk_screen_get_default(),
+        GTK_STYLE_PROVIDER(provider),
+        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION
+    );
+    g_object_unref(provider);
+}
 
 // -----------------------------------------------------------------------------
 // Fonctions utilitaires d'affichage
@@ -71,43 +220,8 @@ static int comparerRacinesLocal(const void *a, const void *b) {
     return strcmp(*(const char **)a, *(const char **)b);
 }
 
-static void remplir_combo_racines(void) {
-    if (!combo_racines) return;
-    
-    gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(combo_racines));
-    
-    if (!ctx.racines) {
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combo_racines), 
-                                       "(Aucune racine - Chargez d'abord)");
-        gtk_combo_box_set_active(GTK_COMBO_BOX(combo_racines), 0);
-        return;
-    }
-    
-    int count = compterNoeudsLocal(ctx.racines);
-    if (count == 0) {
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combo_racines), 
-                                       "(Aucune racine)");
-        gtk_combo_box_set_active(GTK_COMBO_BOX(combo_racines), 0);
-        return;
-    }
-    
-    const char **tab = malloc(count * sizeof(const char *));
-    if (!tab) return;
-    
-    int idx = 0;
-    remplirTableauLocal(ctx.racines, tab, &idx);
-    qsort(tab, count, sizeof(const char *), comparerRacinesLocal);
-    
-    for (int i = 0; i < count; i++) {
-        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combo_racines), tab[i]);
-    }
-    
-    free(tab);
-    gtk_combo_box_set_active(GTK_COMBO_BOX(combo_racines), 0);
-}
-
 // -----------------------------------------------------------------------------
-// Callbacks des boutons EXISTANTS
+// Callbacks des boutons
 // -----------------------------------------------------------------------------
 
 static void on_load_clicked(GtkButton *btn, gpointer data) {
@@ -115,12 +229,10 @@ static void on_load_clicked(GtkButton *btn, gpointer data) {
     (void)data;
     
     clear_text();
-    append_result("📂 Chargement des racines...");
+    // append_result(" Chargement des racines...");
     
     chargerRacinesDepuisFichier(&ctx.racines, "racines.txt");
-    append_result("✅ Racines chargées depuis racines.txt");
-    
-    remplir_combo_racines();
+    append_result(" Racines chargées ");
 }
 
 static void on_save_root_clicked(GtkButton *btn, gpointer entry) {
@@ -130,7 +242,7 @@ static void on_save_root_clicked(GtkButton *btn, gpointer entry) {
     
     if (strlen(racine) == 0) {
         clear_text();
-        append_result("⚠️  Veuillez entrer une racine à enregistrer !");
+        append_result("  Veuillez entrer une racine à enregistrer !");
         return;
     }
     
@@ -164,7 +276,6 @@ static void on_save_root_clicked(GtkButton *btn, gpointer entry) {
     append_result("✅ Racine ajoutée à l'arbre en mémoire");
     
     gtk_entry_set_text(GTK_ENTRY(entry), "");
-    remplir_combo_racines();
 }
 
 static void on_show_roots_clicked(GtkButton *btn, gpointer data) {
@@ -172,114 +283,66 @@ static void on_show_roots_clicked(GtkButton *btn, gpointer data) {
     (void)data;
     
     clear_text();
+    
+    // En-tête avec design amélioré
     append_text("╔═══════════════════════════════════════════════════════════╗\n");
-    append_text("║            📚 LISTE DES RACINES STOCKÉES                 ║\n");
+    append_text("║                                                           ║\n");
+    append_text("║           📚  LISTE DES RACINES STOCKÉES  📚              ║\n");
+    append_text("║                                                           ║\n");
     append_text("╚═══════════════════════════════════════════════════════════╝\n\n");
     
     if (ctx.racines == NULL) {
-        append_result("⚠️  Aucune racine chargée.");
+        append_text("┌───────────────────────────────────────────────────────────┐\n");
+        append_text("│                                                           │\n");
+        append_text("│        ⚠️  AUCUNE RACINE CHARGÉE                          │\n");
+        append_text("│                                                           │\n");
+        append_text("│   💡 Cliquez sur '📂 Charger racines' pour commencer     │\n");
+        append_text("│                                                           │\n");
+        append_text("└───────────────────────────────────────────────────────────┘\n");
         return;
     }
     
-    afficherRacinesCallback(ctx.racines, append_text);
-}
-
-static void on_generate_clicked(GtkButton *btn, gpointer entry) {
-    (void)btn;
+    // Compter les racines
+    int total = compterNoeudsLocal(ctx.racines);
     
-    const char *racine = gtk_entry_get_text(GTK_ENTRY(entry));
-    if (strlen(racine) == 0) {
-        clear_text();
-        append_result("⚠️  Veuillez entrer une racine !");
-        return;
-    }
-    
-    clear_text();
-    
+    // Afficher les statistiques
     char buf[256];
-    snprintf(buf, sizeof(buf), "🔄 Génération des dérivés pour : %s\n", racine);
+    snprintf(buf, sizeof(buf), "📊 Nombre total de racines : %d\n", total);
     append_result(buf);
+    append_text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
     
-    genererFamilleMorphologiqueCallback(ctx.racines, ctx.schemes, racine, append_text);
-}
-
-static void on_validate_clicked(GtkButton *btn, gpointer entry) {
-    (void)btn;
-    
-    const char *mot = gtk_entry_get_text(GTK_ENTRY(entry));
-    
-    if (strlen(mot) == 0) {
-        clear_text();
-        append_result("⚠️  Veuillez entrer un mot à valider !");
-        append_result("");
-        append_result("💡 Instructions :");
-        append_result("   1. Entrez un mot arabe dans le champ");
-        append_result("   2. Sélectionnez une racine dans la liste déroulante");
-        append_result("   3. Cliquez sur 'Valider mot'");
-        return;
-    }
-    
-    gchar *racine_selectionnee = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combo_racines));
-    
-    if (!racine_selectionnee || 
-        strcmp(racine_selectionnee, "(Aucune racine - Chargez d'abord)") == 0 ||
-        strcmp(racine_selectionnee, "(Aucune racine)") == 0) {
-        clear_text();
-        append_result("⚠️  Veuillez d'abord charger les racines !");
-        append_result("   Cliquez sur '📂 Charger racines'");
-        g_free(racine_selectionnee);
-        return;
-    }
-    
-    clear_text();
-    append_text("╔═══════════════════════════════════════════════════════════╗\n");
-    append_text("║              ✅ VALIDATION MORPHOLOGIQUE                 ║\n");
-    append_text("╚═══════════════════════════════════════════════════════════╝\n\n");
-    
-    char info[512];
-    snprintf(info, sizeof(info), "🔍 Vérification : '%s' appartient-il à '%s' ?\n", 
-             mot, racine_selectionnee);
-    append_result(info);
-    
-    Scheme *sch = NULL;
-    int ok = validerMotPourRacine(ctx.racines, ctx.schemes, mot, racine_selectionnee, &sch);
-    
-    char buf[512];
-    if (ok) {
-        append_text("\n");
-        snprintf(buf, sizeof(buf), "✅ RÉSULTAT : OUI\n");
-        append_text(buf);
-        append_text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+    // Récupérer et trier les racines
+    const char **tab = malloc(total * sizeof(const char *));
+    if (tab) {
+        int idx = 0;
+        remplirTableauLocal(ctx.racines, tab, &idx);
+        qsort(tab, total, sizeof(const char *), comparerRacinesLocal);
         
-        snprintf(buf, sizeof(buf), "   ✓ Le mot '%s' appartient bien à la racine '%s'\n", 
-                 mot, racine_selectionnee);
-        append_result(buf);
+        // Afficher les racines en colonnes avec numéros
+        append_text("┏━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n");
+        append_text("┃  N° ┃  RACINE                                           ┃\n");
+        append_text("┡━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩\n");
         
-        if (sch) {
-            snprintf(buf, sizeof(buf), "   📐 Schème identifié : %s", sch->nom);
-            append_result(buf);
-            snprintf(buf, sizeof(buf), "   📝 Pattern utilisé : %s", sch->pattern);
-            append_result(buf);
+        for (int i = 0; i < total; i++) {
+            snprintf(buf, sizeof(buf), "│ %3d │  ✦ %-47s│\n", i + 1, tab[i]);
+            append_text(buf);
+            
+            // Ligne de séparation tous les 5 éléments
+            if ((i + 1) % 5 == 0 && i + 1 < total) {
+                append_text("├─────┼───────────────────────────────────────────────────┤\n");
+            }
         }
-    } else {
-        append_text("\n");
-        snprintf(buf, sizeof(buf), "❌ RÉSULTAT : NON\n");
-        append_text(buf);
-        append_text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
         
-        snprintf(buf, sizeof(buf), "   ✗ Le mot '%s' n'appartient PAS à la racine '%s'\n", 
-                 mot, racine_selectionnee);
-        append_result(buf);
-        append_result("");
-        append_result("💡 Suggestions :");
-        append_result("   • Vérifiez l'orthographe du mot");
-        append_result("   • Essayez une autre racine dans la liste");
-        append_result("   • Cliquez sur 'Afficher schèmes' pour voir les patterns disponibles");
+        append_text("└─────┴───────────────────────────────────────────────────┘\n");
+        
+        free(tab);
     }
     
-    g_free(racine_selectionnee);
+    append_text("\n");
+    append_text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    snprintf(buf, sizeof(buf), "✅ Affichage terminé - %d racine(s) dans la base\n", total);
+    append_result(buf);
 }
-
 static void on_show_schemes_clicked(GtkButton *btn, gpointer data) {
     (void)btn;
     (void)data;
@@ -520,74 +583,69 @@ static void on_identify_scheme_clicked(GtkButton *btn, gpointer entry) {
         return;
     }
     
-    gchar *racine_selectionnee = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(combo_racines));
-    
-    if (!racine_selectionnee || 
-        strcmp(racine_selectionnee, "(Aucune racine - Chargez d'abord)") == 0) {
-        clear_text();
-        append_result("⚠️  Veuillez sélectionner une racine de référence");
-        append_result("   Utilisez la liste déroulante pour choisir");
-        g_free(racine_selectionnee);
-        return;
-    }
-    
     clear_text();
     append_text("╔═══════════════════════════════════════════════════════════╗\n");
     append_text("║            🔍 IDENTIFICATION DU SCHÈME                    ║\n");
     append_text("╚═══════════════════════════════════════════════════════════╝\n\n");
     
     char buf[512];
-    snprintf(buf, sizeof(buf), "🔍 Analyse du mot : '%s'", mot);
-    append_result(buf);
-    snprintf(buf, sizeof(buf), "📚 Racine de référence : '%s'\n", racine_selectionnee);
+    snprintf(buf, sizeof(buf), "🔍 Analyse du mot : '%s'\n", mot);
     append_result(buf);
     
     int trouve = 0;
     
-    for (int i = 0; i < TAILLE_TABLE; i++) {
-        EntreeHash* e = ctx.schemes->cases[i];
-        while (e) {
-            char* mot_genere = genererMot(racine_selectionnee, &e->valeur);
-            
-            if (mot_genere) {
-                if (strcmp(mot, mot_genere) == 0) {
-                    append_text("\n✅ SCHÈME IDENTIFIÉ !\n");
-                    append_text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
-                    
-                    snprintf(buf, sizeof(buf), "   📐 Schème : %s", e->valeur.nom);
-                    append_result(buf);
-                    snprintf(buf, sizeof(buf), "   📝 Pattern : %s", e->valeur.pattern);
-                    append_result(buf);
-                    snprintf(buf, sizeof(buf), "   ✓ Formule : %s + %s → %s", 
-                             racine_selectionnee, e->valeur.nom, mot);
-                    append_result(buf);
-                    
+    // Parcourir toutes les racines
+    void testerToutesRacines(NoeudArbre* n) {
+        if (!n || trouve) return;
+        testerToutesRacines(n->gauche);
+        
+        // Tester tous les schèmes avec cette racine
+        for (int i = 0; i < TAILLE_TABLE && !trouve; i++) {
+            EntreeHash* e = ctx.schemes->cases[i];
+            while (e && !trouve) {
+                char* mot_genere = genererMot(n->data.racine, &e->valeur);
+                
+                if (mot_genere) {
+                    if (strcmp(mot, mot_genere) == 0) {
+                        append_text("\n✅ SCHÈME IDENTIFIÉ !\n");
+                        append_text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+                        
+                        snprintf(buf, sizeof(buf), "   📚 Racine : %s", n->data.racine);
+                        append_result(buf);
+                        snprintf(buf, sizeof(buf), "   📐 Schème : %s", e->valeur.nom);
+                        append_result(buf);
+                        snprintf(buf, sizeof(buf), "   📝 Pattern : %s", e->valeur.pattern);
+                        append_result(buf);
+                        snprintf(buf, sizeof(buf), "   ✓ Formule : %s + %s → %s", 
+                                 n->data.racine, e->valeur.nom, mot);
+                        append_result(buf);
+                        
+                        trouve = 1;
+                    }
                     free(mot_genere);
-                    trouve = 1;
-                    break;
                 }
-                free(mot_genere);
+                e = e->suivant;
             }
-            e = e->suivant;
         }
-        if (trouve) break;
+        
+        if (!trouve) testerToutesRacines(n->droite);
+    }
+    
+    if (ctx.racines) {
+        testerToutesRacines(ctx.racines);
     }
     
     if (!trouve) {
         append_text("\n❌ AUCUN SCHÈME TROUVÉ\n");
         append_text("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
-        snprintf(buf, sizeof(buf), "   Le mot '%s' ne correspond à aucun schème connu", mot);
-        append_result(buf);
-        snprintf(buf, sizeof(buf), "   avec la racine '%s'", racine_selectionnee);
+        snprintf(buf, sizeof(buf), "   Le mot '%s' ne correspond à aucune combinaison connue", mot);
         append_result(buf);
         append_result("");
         append_result("💡 Suggestions :");
         append_result("   • Vérifiez l'orthographe du mot");
-        append_result("   • Essayez une autre racine");
-        append_result("   • Le schème utilisé n'est peut-être pas dans la base");
+        append_result("   • Chargez plus de racines");
+        append_result("   • Ajoutez de nouveaux schèmes");
     }
-    
-    g_free(racine_selectionnee);
 }
 
 static void on_add_scheme_clicked(GtkButton *btn, gpointer data) {
@@ -1217,12 +1275,6 @@ static void on_verifier_appartenance_clicked(GtkButton *btn, gpointer data) {
     
     gtk_box_pack_start(GTK_BOX(box_racine), combo_racine, FALSE, FALSE, 5);
     
-    // Info
-    GtkWidget *label_info = gtk_label_new(NULL);
-    gtk_label_set_markup(GTK_LABEL(label_info),
-        "<small><i>💡 Exemple : كتب + مكتوب → OUI (schème: مفعول)</i></small>");
-    gtk_box_pack_start(GTK_BOX(content_area), label_info, FALSE, FALSE, 10);
-    
     gtk_widget_show_all(dialog);
     gint result = gtk_dialog_run(GTK_DIALOG(dialog));
     
@@ -1342,154 +1394,193 @@ static void on_verifier_appartenance_clicked(GtkButton *btn, gpointer data) {
 
 static void activate(GtkApplication *app, gpointer user_data) {
     (void)user_data;
-    
-    // Configuration locale pour support UTF-8 et arabe
+   
     setlocale(LC_ALL, "");
     gtk_init(NULL, NULL);
-    
+   
+    appliquer_style_moderne();
+   
     GtkWidget *window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(window), "🌙 Moteur Morphologique Arabe - القاموس");
-    gtk_window_set_default_size(GTK_WINDOW(window), 1200, 800);
-    
-    GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 10);
-    gtk_container_set_border_width(GTK_CONTAINER(main_box), 10);
+    gtk_window_set_default_size(GTK_WINDOW(window), 1350, 920);
+   
+    GtkWidget *main_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
+    gtk_container_set_border_width(GTK_CONTAINER(main_box), 20);
     gtk_container_add(GTK_CONTAINER(window), main_box);
-    
+   
+    // Header
     GtkWidget *header_label = gtk_label_new(NULL);
+    gtk_widget_set_name(header_label, "header");
     gtk_label_set_markup(GTK_LABEL(header_label),
-        "<span size='x-large' weight='bold'>🌙 Moteur Morphologique Arabe</span>");
-    gtk_box_pack_start(GTK_BOX(main_box), header_label, FALSE, FALSE, 5);
-    
-    GtkWidget *entry_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_box_pack_start(GTK_BOX(main_box), entry_box, FALSE, FALSE, 0);
-    
+        "<span size='xx-large' weight='bold'>🌙 Moteur Morphologique Arabe</span>\n"
+        "<span size='small'>Mini-Projet Algorithmique - GLSI 2025-2026</span>");
+    gtk_label_set_justify(GTK_LABEL(header_label), GTK_JUSTIFY_CENTER);
+    gtk_box_pack_start(GTK_BOX(main_box), header_label, FALSE, FALSE, 10);
+   
+    // Entrée mot/racine + bouton save
+    GtkWidget *entry_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
+    gtk_box_pack_start(GTK_BOX(main_box), entry_box, FALSE, FALSE, 6);
+   
     GtkWidget *entry_label = gtk_label_new("Mot à tester :");
     gtk_box_pack_start(GTK_BOX(entry_box), entry_label, FALSE, FALSE, 0);
-    
+   
     GtkWidget *entry = gtk_entry_new();
     gtk_entry_set_placeholder_text(GTK_ENTRY(entry), "Entrez un mot arabe (ex: مكتوب) ou une racine (ex: كتب)");
     gtk_box_pack_start(GTK_BOX(entry_box), entry, TRUE, TRUE, 0);
-    
+   
     GtkWidget *btn_save_root = gtk_button_new_with_label("💾 Enregistrer comme racine");
+    gtk_style_context_add_class(gtk_widget_get_style_context(btn_save_root), "info");
     gtk_box_pack_start(GTK_BOX(entry_box), btn_save_root, FALSE, FALSE, 0);
-    
-    GtkWidget *combo_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_box_pack_start(GTK_BOX(main_box), combo_box, FALSE, FALSE, 0);
-    
-    GtkWidget *combo_label = gtk_label_new("Racine de référence :");
-    gtk_box_pack_start(GTK_BOX(combo_box), combo_label, FALSE, FALSE, 0);
-    
-    combo_racines = gtk_combo_box_text_new();
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(combo_racines), 
-                                   "(Aucune racine - Chargez d'abord)");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(combo_racines), 0);
-    gtk_box_pack_start(GTK_BOX(combo_box), combo_racines, TRUE, TRUE, 0);
-    
-    GtkWidget *btn_box1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_box_pack_start(GTK_BOX(main_box), btn_box1, FALSE, FALSE, 0);
-    
+   
+    // SECTION 1 : Chargement et consultation
+    GtkWidget *frame1 = gtk_frame_new(NULL);
+    gtk_widget_set_name(frame1, "section-frame");
+    GtkWidget *box1 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_container_add(GTK_CONTAINER(frame1), box1);
+   
+    GtkWidget *title1 = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(title1), "<span class='section-title'>Chargement et consultation</span>");
+    gtk_box_pack_start(GTK_BOX(box1), title1, FALSE, FALSE, 0);
+   
+    GtkWidget *row1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+    gtk_box_pack_start(GTK_BOX(box1), row1, FALSE, FALSE, 0);
+   
     GtkWidget *btn_load = gtk_button_new_with_label("📂 Charger racines");
     GtkWidget *btn_show_roots = gtk_button_new_with_label("📚 Afficher racines");
-    GtkWidget *btn_generate = gtk_button_new_with_label("🔄 Générer dérivés");
-    GtkWidget *btn_validate = gtk_button_new_with_label("✅ Valider mot");
-    
-    gtk_box_pack_start(GTK_BOX(btn_box1), btn_load, TRUE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(btn_box1), btn_show_roots, TRUE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(btn_box1), btn_generate, TRUE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(btn_box1), btn_validate, TRUE, TRUE, 0);
-    
-    GtkWidget *btn_box2 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_box_pack_start(GTK_BOX(main_box), btn_box2, FALSE, FALSE, 0);
-    
     GtkWidget *btn_load_schemes = gtk_button_new_with_label("📂 Charger schèmes");
     GtkWidget *btn_schemes = gtk_button_new_with_label("📐 Afficher schèmes");
-    
-    gtk_box_pack_start(GTK_BOX(btn_box2), btn_load_schemes, TRUE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(btn_box2), btn_schemes, TRUE, TRUE, 0);
-    
-    GtkWidget *btn_box3 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_box_pack_start(GTK_BOX(main_box), btn_box3, FALSE, FALSE, 0);
-    
-    GtkWidget *btn_add_scheme = gtk_button_new_with_label("➕ Ajouter schème");
-    GtkWidget *btn_edit_scheme = gtk_button_new_with_label("✏️ Modifier schème");
+   
+    gtk_style_context_add_class(gtk_widget_get_style_context(btn_load), "success");
+    gtk_style_context_add_class(gtk_widget_get_style_context(btn_show_roots), "info");
+    gtk_style_context_add_class(gtk_widget_get_style_context(btn_load_schemes), "success");
+    gtk_style_context_add_class(gtk_widget_get_style_context(btn_schemes), "info");
+   
+    gtk_box_pack_start(GTK_BOX(row1), btn_load, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(row1), btn_show_roots, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(row1), btn_load_schemes, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(row1), btn_schemes, TRUE, TRUE, 0);
+   
+    gtk_box_pack_start(GTK_BOX(main_box), frame1, FALSE, FALSE, 8);
+   
+    // SECTION 2 : Opérations courantes
+    GtkWidget *frame2 = gtk_frame_new(NULL);
+    gtk_widget_set_name(frame2, "section-frame");
+    GtkWidget *box2 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_container_add(GTK_CONTAINER(frame2), box2);
+   
+    GtkWidget *title2 = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(title2), "<span class='section-title'>Opérations sur mot / racine</span>");
+    gtk_box_pack_start(GTK_BOX(box2), title2, FALSE, FALSE, 0);
+   
+    GtkWidget *row2 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+    gtk_box_pack_start(GTK_BOX(box2), row2, FALSE, FALSE, 0);
+   
+    GtkWidget *btn_generate = gtk_button_new_with_label("🔄 Générer dérivés");
+    GtkWidget *btn_validate = gtk_button_new_with_label("✅ Valider mot");
+   
+    gtk_style_context_add_class(gtk_widget_get_style_context(btn_generate), "warning");
+    gtk_style_context_add_class(gtk_widget_get_style_context(btn_validate), "success");
+   
+    gtk_box_pack_start(GTK_BOX(row2), btn_generate, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(row2), btn_validate, TRUE, TRUE, 0);
+   
+    gtk_box_pack_start(GTK_BOX(main_box), frame2, FALSE, FALSE, 8);
+   
+    // SECTION 3 : Gestion des schèmes
+    GtkWidget *frame3 = gtk_frame_new(NULL);
+    gtk_widget_set_name(frame3, "section-frame");
+    GtkWidget *box3 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_container_add(GTK_CONTAINER(frame3), box3);
+   
+    GtkWidget *title3 = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(title3), "<span class='section-title'>Gestion des schèmes</span>");
+    gtk_box_pack_start(GTK_BOX(box3), title3, FALSE, FALSE, 0);
+   
+    GtkWidget *row3 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+    gtk_box_pack_start(GTK_BOX(box3), row3, FALSE, FALSE, 0);
+   
+    GtkWidget *btn_add_scheme    = gtk_button_new_with_label("➕ Ajouter schème");
+    GtkWidget *btn_edit_scheme   = gtk_button_new_with_label("✏️ Modifier schème");
     GtkWidget *btn_delete_scheme = gtk_button_new_with_label("🗑️ Supprimer schème");
-    
-    gtk_box_pack_start(GTK_BOX(btn_box3), btn_add_scheme, TRUE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(btn_box3), btn_edit_scheme, TRUE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(btn_box3), btn_delete_scheme, TRUE, TRUE, 0);
-    
-    // ═══════════════════════════════════════════════════════════════
-    // 🎉 LES 3 NOUVEAUX BOUTONS ICI !
-    // ═══════════════════════════════════════════════════════════════
-    
-    GtkWidget *btn_box_nouveaux = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_box_pack_start(GTK_BOX(main_box), btn_box_nouveaux, FALSE, FALSE, 0);
-    
+   
+    gtk_style_context_add_class(gtk_widget_get_style_context(btn_add_scheme), "success");
+    gtk_style_context_add_class(gtk_widget_get_style_context(btn_edit_scheme), "warning");
+    gtk_style_context_add_class(gtk_widget_get_style_context(btn_delete_scheme), "danger");
+   
+    gtk_box_pack_start(GTK_BOX(row3), btn_add_scheme, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(row3), btn_edit_scheme, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(row3), btn_delete_scheme, TRUE, TRUE, 0);
+   
+    gtk_box_pack_start(GTK_BOX(main_box), frame3, FALSE, FALSE, 8);
+   
+    // SECTION 4 : Outils avancés (tes 3 nouveaux boutons)
+    GtkWidget *frame4 = gtk_frame_new(NULL);
+    gtk_widget_set_name(frame4, "section-frame");
+    GtkWidget *box4 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 8);
+    gtk_container_add(GTK_CONTAINER(frame4), box4);
+   
+    GtkWidget *title4 = gtk_label_new(NULL);
+    gtk_label_set_markup(GTK_LABEL(title4), "<span class='section-title'>Outils avancés</span>");
+    gtk_box_pack_start(GTK_BOX(box4), title4, FALSE, FALSE, 0);
+   
+    GtkWidget *row4 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
+    gtk_box_pack_start(GTK_BOX(box4), row4, FALSE, FALSE, 0);
+   
     GtkWidget *btn_gen_dynamique = gtk_button_new_with_label("🎲 Génération Dynamique");
     GtkWidget *btn_auto_identify = gtk_button_new_with_label("🔎 Auto-identifier Schème");
-    GtkWidget *btn_verifier = gtk_button_new_with_label("🔍 Vérifier Appartenance");
-    
-    gtk_box_pack_start(GTK_BOX(btn_box_nouveaux), btn_gen_dynamique, TRUE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(btn_box_nouveaux), btn_auto_identify, TRUE, TRUE, 0);
-    gtk_box_pack_start(GTK_BOX(btn_box_nouveaux), btn_verifier, TRUE, TRUE, 0);
-    
-    // ═══════════════════════════════════════════════════════════════
-    
+    GtkWidget *btn_verifier      = gtk_button_new_with_label("🔍 Vérifier Appartenance");
+   
+    gtk_style_context_add_class(gtk_widget_get_style_context(btn_gen_dynamique), "warning");
+    gtk_style_context_add_class(gtk_widget_get_style_context(btn_auto_identify), "info");
+    gtk_style_context_add_class(gtk_widget_get_style_context(btn_verifier), "success");
+   
+    gtk_box_pack_start(GTK_BOX(row4), btn_gen_dynamique, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(row4), btn_auto_identify, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(row4), btn_verifier, TRUE, TRUE, 0);
+   
+    gtk_box_pack_start(GTK_BOX(main_box), frame4, FALSE, FALSE, 8);
+   
+    // Zone résultats (plus grande)
     GtkWidget *scroll = gtk_scrolled_window_new(NULL, NULL);
-    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
-                                   GTK_POLICY_AUTOMATIC,
-                                   GTK_POLICY_AUTOMATIC);
-    gtk_box_pack_start(GTK_BOX(main_box), scroll, TRUE, TRUE, 0);
-    
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+    gtk_widget_set_vexpand(scroll, TRUE);
+    gtk_box_pack_end(GTK_BOX(main_box), scroll, TRUE, TRUE, 0);
+   
     result_text = gtk_text_view_new();
     gtk_text_view_set_editable(GTK_TEXT_VIEW(result_text), FALSE);
     gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(result_text), GTK_WRAP_WORD);
     gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(result_text), FALSE);
-    
+   
     PangoFontDescription *font_desc = pango_font_description_from_string("Monospace 11");
     gtk_widget_override_font(result_text, font_desc);
     pango_font_description_free(font_desc);
-    
+   
     gtk_container_add(GTK_CONTAINER(scroll), result_text);
-    
+   
+    // Connexions
     g_signal_connect(btn_save_root, "clicked", G_CALLBACK(on_save_root_clicked), entry);
     g_signal_connect(btn_load, "clicked", G_CALLBACK(on_load_clicked), NULL);
     g_signal_connect(btn_show_roots, "clicked", G_CALLBACK(on_show_roots_clicked), NULL);
     g_signal_connect(btn_generate, "clicked", G_CALLBACK(on_generate_clicked), entry);
-    g_signal_connect(btn_validate, "clicked", G_CALLBACK(on_validate_clicked), entry);
+    g_signal_connect(btn_validate, "clicked", G_CALLBACK(on_validate_clicked), NULL);
     g_signal_connect(btn_load_schemes, "clicked", G_CALLBACK(on_load_schemes_clicked), NULL);
     g_signal_connect(btn_schemes, "clicked", G_CALLBACK(on_show_schemes_clicked), NULL);
     g_signal_connect(btn_add_scheme, "clicked", G_CALLBACK(on_add_scheme_clicked), NULL);
     g_signal_connect(btn_edit_scheme, "clicked", G_CALLBACK(on_edit_scheme_clicked), NULL);
     g_signal_connect(btn_delete_scheme, "clicked", G_CALLBACK(on_delete_scheme_clicked), NULL);
-    
-    // ═══════════════════════════════════════════════════════════════
-    // 🎉 CONNEXION DES 3 NOUVEAUX BOUTONS !
-    // ═══════════════════════════════════════════════════════════════
-    
-    g_signal_connect(btn_gen_dynamique, "clicked", 
-                     G_CALLBACK(on_generation_dynamique_clicked), NULL);
-    g_signal_connect(btn_auto_identify, "clicked", 
-                     G_CALLBACK(on_auto_identifier_clicked), NULL);
-    g_signal_connect(btn_verifier, "clicked", 
-                     G_CALLBACK(on_verifier_appartenance_clicked), NULL);
-    
-    // ═══════════════════════════════════════════════════════════════
-    
+   
+    g_signal_connect(btn_gen_dynamique, "clicked", G_CALLBACK(on_generation_dynamique_clicked), NULL);
+    g_signal_connect(btn_auto_identify, "clicked", G_CALLBACK(on_auto_identifier_clicked), NULL);
+    g_signal_connect(btn_verifier, "clicked", G_CALLBACK(on_verifier_appartenance_clicked), NULL);
+   
+    // Message d'accueil
     append_text("╔═══════════════════════════════════════════════════════════╗\n");
-    append_text("║                                                           ║\n");
-    append_text("║         🌙 MOTEUR MORPHOLOGIQUE ARABE 🌙                 ║\n");
-    append_text("║              Mini-Projet Algorithmique                    ║\n");
-    append_text("║                                                           ║\n");
+    append_text("║               BIENVENUE DANS LE MOTEUR                   ║\n");
     append_text("╚═══════════════════════════════════════════════════════════╝\n\n");
-    append_text("💡 Instructions :\n");
-    append_text("   1. Cliquez sur '📂 Charger racines' pour commencer\n");
-    append_text("   2. Cliquez sur '📂 Charger schèmes'\n");
-    append_text("   3. Testez les 3 NOUVEAUX boutons :\n");
-    append_text("      • 🎲 Génération Dynamique\n");
-    append_text("      • 🔎 Auto-identifier Schème\n");
-    append_text("      • 🔍 Vérifier Appartenance\n\n");
-    
+    append_text("1. Commencez par charger les racines et les schèmes\n");
+    append_text("2. Les outils sont regroupés par catégorie\n");
+    append_text("3. Le bouton 'Valider mot' ouvre maintenant une popup\n\n");
+   
     gtk_widget_show_all(window);
 }
 
