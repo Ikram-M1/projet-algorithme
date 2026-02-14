@@ -134,7 +134,7 @@ void initialiserSchemesDeBase(TableHash* t) {
         {"افتعل",   "ا1ت23",    NULL},    // Forme VIII
         {"تفعيل",   "ت12ي3",    NULL},    // Nom d'action forme II
         {"مفعال",   "م12ا3",    NULL},    // Nom d'instrument
-        {"فعيل",    "123",      NULL},    // Adjectif intensif
+        {"فعل",    "123",      NULL},    // Adjectif intensif
         {"فعّال",   "12ّا3",    NULL},    // Métier/profession
         {"استفعل",  "است123",   NULL}     // Forme X
     };

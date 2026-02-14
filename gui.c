@@ -565,8 +565,8 @@ static void on_validate_clicked(GtkButton *btn, gpointer data) {
             if (sch_trouve) {
                 snprintf(buf, sizeof(buf), "  Schème : %s\n", sch_trouve->nom);
                 gtk_text_buffer_insert(buffer, &iter, buf, -1);
-                snprintf(buf, sizeof(buf), "  Pattern : %s\n", sch_trouve->pattern);
-                gtk_text_buffer_insert(buffer, &iter, buf, -1);
+                // snprintf(buf, sizeof(buf), "  Pattern : %s\n", sch_trouve->pattern);
+                // gtk_text_buffer_insert(buffer, &iter, buf, -1);
             }
         } else {
             gtk_text_buffer_insert_with_tags(buffer, &iter, "  ✗ NON", -1, tag_error, NULL);
@@ -620,8 +620,8 @@ static void on_show_schemes_clicked(GtkButton *btn, gpointer data) {
             gtk_text_buffer_insert_with_tags(buffer, &iter, e->valeur.nom, -1, tag_scheme, NULL);
             gtk_text_buffer_insert(buffer, &iter, "  ", -1);
             
-            snprintf(buf, sizeof(buf), "(%s)", e->valeur.pattern);
-            gtk_text_buffer_insert_with_tags(buffer, &iter, buf, -1, tag_pattern, NULL);
+            // snprintf(buf, sizeof(buf), "(%s)", e->valeur.pattern);
+            // gtk_text_buffer_insert_with_tags(buffer, &iter, buf, -1, tag_pattern, NULL);
             gtk_text_buffer_insert(buffer, &iter, "\n", -1);
             
             count++;
@@ -654,7 +654,7 @@ static void on_load_schemes_clicked(GtkButton *btn, gpointer data) {
     
     char buf[128];
     gtk_text_buffer_insert_with_tags(buffer, &iter, "✓ ", -1, tag_success, NULL);
-    snprintf(buf, sizeof(buf), "%d schèmes chargés\n", nb);
+    snprintf(buf, sizeof(buf), "%d schèmes chargés\n");
     gtk_text_buffer_insert_with_tags(buffer, &iter, buf, -1, tag_success, NULL);
 }
 
@@ -1159,7 +1159,7 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_widget_set_name(header_label, "header");
     gtk_label_set_markup(GTK_LABEL(header_label),
         "<span size='xx-large' weight='bold'>🌙 Moteur Morphologique Arabe</span>\n"
-        "<span size='small'>Mini-Projet Algorithmique - GLSI 2025-2026</span>");
+        );
     gtk_label_set_justify(GTK_LABEL(header_label), GTK_JUSTIFY_CENTER);
     gtk_box_pack_start(GTK_BOX(main_box), header_label, FALSE, FALSE, 10);
    
@@ -1244,9 +1244,9 @@ static void activate(GtkApplication *app, gpointer user_data) {
     GtkWidget *row3 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     gtk_box_pack_start(GTK_BOX(box3), row3, FALSE, FALSE, 0);
    
-    GtkWidget *btn_add_scheme = gtk_button_new_with_label("➕ Ajouter");
-    GtkWidget *btn_edit_scheme = gtk_button_new_with_label("✏️ Modifier");
-    GtkWidget *btn_delete_scheme = gtk_button_new_with_label("🗑️ Supprimer");
+    GtkWidget *btn_add_scheme = gtk_button_new_with_label("➕ Ajouter shèmes");
+    GtkWidget *btn_edit_scheme = gtk_button_new_with_label("✏️ Modifier shèmes");
+    GtkWidget *btn_delete_scheme = gtk_button_new_with_label("🗑️ Supprimer shèmes");
    
     gtk_style_context_add_class(gtk_widget_get_style_context(btn_add_scheme), "success");
     gtk_style_context_add_class(gtk_widget_get_style_context(btn_edit_scheme), "warning");
