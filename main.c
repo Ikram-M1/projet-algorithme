@@ -3,394 +3,530 @@
 #include <string.h>
 #include <locale.h>
 
-#ifdef _WIN32
-    #include <windows.h>
-#endif
-
 #include "types.h"
 #include "arbre.h"
 #include "hash.h"
 #include "morphologie.h"
 
-// Déclaration de la fonction GUI (à implémenter dans gui.c)
-// extern void launch_gui(int argc, char *argv[], Contexte *ctx);   // déclaration
+// Déclaration de la fonction GUI (si disponible dans gui.c)
+extern int lancer_gui(int argc, char *argv[]) __attribute__((weak));
 
-// // Dans le main, quand l'utilisateur choisit le mode GUI :
-// if (mode == 2) {
-//     launch_gui(argc, argv, &ctx);
-//     return 0;
-// }
-// Charge les racines (en arabe ou translittération) depuis racines.txt
+// Contexte global de l'application
+Contexte ctx;
+
+// Fonction publique pour charger racines (accessible par gui.c)
+void chargerRacinesDepuisFichier(NoeudArbre** arbre, const char* nomFichier);
+
+// Buffer pour l'affichage avec callback
+static char displayBuffer[50000];
+
+// Fonction callback pour AppendFunc
+static void appendToBuffer(const char* str) {
+    if (strlen(displayBuffer) + strlen(str) < sizeof(displayBuffer) - 1) {
+        strcat(displayBuffer, str);
+    }
+}
+
+// Fonction pour afficher le buffer et le vider
+static void flushBuffer() {
+    printf("%s", displayBuffer);
+    displayBuffer[0] = '\0';
+}
+
+// -----------------------------------------------------------------------------
+// Fonctions utilitaires
+// -----------------------------------------------------------------------------
+
+/**
+ * Vide le buffer stdin pour éviter les problèmes de saisie
+ */
+static void viderBuffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+/**
+ * Lit une ligne sécurisée depuis stdin
+ */
+static int lireLigne(char* buffer, int taille) {
+    if (!fgets(buffer, taille, stdin)) {
+        return 0;
+    }
+    buffer[strcspn(buffer, "\r\n")] = '\0';
+    return 1;
+}
+
+/**
+ * Affiche un titre avec bordure
+ */
+static void afficherTitre(const char* titre) {
+    printf("\n╔═══════════════════════════════════════════════════════════╗\n");
+    printf("║  %-55s  ║\n", titre);
+    printf("╚═══════════════════════════════════════════════════════════╝\n\n");
+}
+
+/**
+ * Affiche un séparateur
+ */
+static void afficherSeparateur() {
+    printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+}
+
+// -----------------------------------------------------------------------------
+// Chargement et initialisation
+// -----------------------------------------------------------------------------
+
+/**
+ * Charge les racines depuis un fichier texte
+ * Format : une racine par ligne
+ */
 void chargerRacinesDepuisFichier(NoeudArbre** arbre, const char* nomFichier) {
     FILE* f = fopen(nomFichier, "r");
     if (!f) {
-        printf("Impossible d'ouvrir %s\n", nomFichier);
+        printf("⚠️  Impossible d'ouvrir '%s'\n", nomFichier);
+        printf("    Le fichier n'existe peut-être pas encore.\n");
+        printf("    Vous pouvez créer un fichier %s avec une racine par ligne.\n\n", nomFichier);
         return;
     }
 
     char ligne[MAX_LEN];
+    int count = 0;
+    int erreurs = 0;
+
+    printf("📂 Chargement des racines depuis '%s'...\n", nomFichier);
+
     while (fgets(ligne, sizeof(ligne), f)) {
+        // Supprime le retour à la ligne
         ligne[strcspn(ligne, "\r\n")] = '\0';
-        if (strlen(ligne) > 0) {
+        
+        // Ignore les lignes vides et les commentaires
+        if (strlen(ligne) > 0 && ligne[0] != '#') {
+            NoeudArbre* ancien = *arbre;
             *arbre = insererRacine(*arbre, ligne);
+            if (*arbre != ancien || ancien == NULL) {
+                count++;
+            } else {
+                erreurs++;
+            }
         }
     }
-
     fclose(f);
+
+    printf("✅ %d racine(s) chargée(s)", count);
+    if (erreurs > 0) {
+        printf(" (%d doublon(s) ignoré(s))", erreurs);
+    }
+    printf("\n\n");
 }
 
-// Initialisation de quelques schèmes de base (noms + patterns en arabe)
+/**
+ * Initialise les schèmes de base pour le système
+ */
 void initialiserSchemesDeBase(TableHash* t) {
-    Scheme s1 = creerScheme("فاعل", "1ا23");
-    insererScheme(t, s1);
+    if (!t) return;
 
-    Scheme s2 = creerScheme("مفعول", "م12و3");
-    insererScheme(t, s2);
+    printf("🔧 Initialisation des schèmes de base...\n");
 
-    Scheme s3 = creerScheme("افتعل", "ا1ت23");
-    insererScheme(t, s3);
+    // Schèmes classiques de la morphologie arabe
+    Scheme schemes[] = {
+        {"فاعل",    "1ا23",     NULL},    // Agent/acteur
+        {"مفعول",   "م12و3",    NULL},    // Participe passif
+        {"افتعل",   "ا1ت23",    NULL},    // Forme VIII
+        {"تفعيل",   "ت12ي3",    NULL},    // Nom d'action forme II
+        {"مفعال",   "م12ا3",    NULL},    // Nom d'instrument
+        {"فعل",    "123",      NULL},    // Adjectif intensif
+        {"فعّال",   "12ّا3",    NULL},    // Métier/profession
+        {"استفعل",  "است123",   NULL}     // Forme X
+    };
 
-    Scheme s4 = creerScheme("تفعيل", "ت12ي3");
-    insererScheme(t, s4);
+    int nb = sizeof(schemes) / sizeof(Scheme);
+    for (int i = 0; i < nb; i++) {
+        insererScheme(t, schemes[i]);
+    }
+
+    printf("✅ %d schème(s) initialisé(s)\n\n", nb);
 }
+
+// -----------------------------------------------------------------------------
+// Menu principal
+// -----------------------------------------------------------------------------
 
 void afficherMenu() {
-    printf("====================================\n");
-    printf("  MOTEUR MORPHOLOGIQUE ARABE (C) - VERSION 2.0\n");
-    printf("====================================\n");
-    printf("  GESTION DES RACINES\n");
-    printf("  -----------------------------------------------\n");
-    printf("  1) Charger les racines depuis fichier\n");
-    printf("  2) Afficher toutes les racines\n");
-    printf("  3) Ajouter une nouvelle racine\n");
-    printf("\n  GÉNÉRATION ET VÉRIFICATION\n");
-    printf("  -----------------------------------------------\n");
-    printf("  4) Générer les dérivés d'une racine\n");
-    printf("  5) Vérifier si un mot appartient à une racine (+ schème)\n");
-    printf("  6) Décomposer un mot (identifier racine + schème)\n");
-    printf("  7) Afficher les dérivés d'une racine\n");
-    printf("\n  GESTION DES SCHÈMES\n");
-    printf("  -----------------------------------------------\n");
-    printf("  8) Afficher les schèmes disponibles\n");
-    printf("  9) Ajouter un schème\n");
-    printf("  10) Modifier un schème\n");
-    printf("  11) Supprimer un schème\n");
-    printf("\n  VERBES IRRÉGULIERS (أفعال غير منتظمة)\n");
-    printf("  -----------------------------------------------\n");
-    printf("  12 - Verbes Creux (أجوف)\n");
-    printf("       a) Générer les dérivés d'une racine Ajwaf\n");
-    printf("       b) Vérifier si un mot appartient à une racine Ajwaf\n");
-    printf("       c) Décomposer un mot Ajwaf\n");
-    printf("       d) Afficher les dérivés d'une racine Ajwaf\n");
-    printf("\n  -----------------------------------------------\n");
-    printf("  0) Quitter\n");
-    printf("Votre choix: ");
+    printf("\n");
+    printf("╔═══════════════════════════════════════════════════════════╗\n");
+    printf("║         🌙 MOTEUR MORPHOLOGIQUE ARABE - القاموس         ║\n");
+    printf("╚═══════════════════════════════════════════════════════════╝\n");
+    printf("\n");
+    printf("  📚 GESTION DES RACINES\n");
+    printf("    1️⃣  Charger racines depuis fichier\n");
+    printf("    2️⃣  Afficher toutes les racines\n");
+    printf("    3️⃣  Ajouter une nouvelle racine\n");
+    printf("    4️⃣  Rechercher une racine\n");
+    printf("\n");
+    printf("  🔄 GÉNÉRATION MORPHOLOGIQUE\n");
+    printf("    5️⃣  Générer les dérivés d'une racine\n");
+    printf("    6️⃣  Afficher les dérivés existants\n");
+    printf("\n");
+    printf("  ✅ VALIDATION\n");
+    printf("    7️⃣  Vérifier si un mot appartient à une racine\n");
+    printf("\n");
+    printf("  📐 GESTION DES SCHÈMES\n");
+    printf("    8️⃣  Afficher les schèmes disponibles\n");
+    printf("    9️⃣  Charger schèmes depuis fichier\n");
+    printf("    🔟 Ajouter un schème\n");
+    printf("    1️⃣1️⃣ Modifier un schème\n");
+    printf("    1️⃣2️⃣ Supprimer un schème\n");
+    printf("\n");
+    printf("  📊 STATISTIQUES\n");
+    printf("    1️⃣3️⃣ Afficher statistiques de l'arbre\n");
+    printf("    1️⃣4️⃣ Afficher statistiques de la table de hachage\n");
+    printf("\n");
+    printf("  💾 SAUVEGARDE\n");
+    printf("    1️⃣5️⃣ Sauvegarder les racines\n");
+    printf("\n");
+    printf("  ❌ QUITTER\n");
+    printf("    0️⃣  Quitter l'application\n");
+    printf("\n");
+    afficherSeparateur();
+    printf("👉 Votre choix : ");
 }
 
-int main(void) {
-    // Configuration UTF-8 sur Windows
-    #ifdef _WIN32
-        SetConsoleCP(CP_UTF8);
-        SetConsoleOutputCP(CP_UTF8);
-    #endif
-    
-    setlocale(LC_ALL, ".UTF-8");  // forcer UTF-8
+// -----------------------------------------------------------------------------
+// Fonctions du menu
+// -----------------------------------------------------------------------------
 
-    printf("Choisissez le mode :\n");
-    printf("1) Mode console\n");
-    printf("2) Mode graphique (interface GTK)\n");
-    printf("Votre choix : ");
+void menuChargerRacines() {
+    afficherTitre("📂 CHARGEMENT DES RACINES");
+    printf("Fichier par défaut : racines.txt\n");
+    printf("Appuyez sur Entrée pour utiliser le défaut, ou tapez un autre nom : ");
+    
+    char nomFichier[256];
+    if (!lireLigne(nomFichier, sizeof(nomFichier)) || strlen(nomFichier) == 0) {
+        strcpy(nomFichier, "racines.txt");
+    }
+    
+    chargerRacinesDepuisFichier(&ctx.racines, nomFichier);
+}
+
+void menuAfficherRacines() {
+    afficherTitre("📚 LISTE DES RACINES");
+    displayBuffer[0] = '\0';
+    afficherRacinesCallback(ctx.racines, appendToBuffer);
+    flushBuffer();
+}
+
+void menuAjouterRacine() {
+    afficherTitre("➕ AJOUTER UNE RACINE");
+    printf("Entrez la racine trilitère (ex: كتب) : ");
+    
+    char buffer[MAX_LEN];
+    if (!lireLigne(buffer, sizeof(buffer))) {
+        printf("❌ Erreur de lecture\n");
+        return;
+    }
+    
+    NoeudArbre* avant = ctx.racines;
+    ctx.racines = insererRacine(ctx.racines, buffer);
+    
+    if (ctx.racines != avant || avant == NULL) {
+        printf("✅ Racine '%s' ajoutée avec succès\n\n", buffer);
+    } else {
+        printf("⚠️  La racine '%s' existe déjà\n\n", buffer);
+    }
+}
+
+void menuRechercherRacine() {
+    afficherTitre("🔍 RECHERCHER UNE RACINE");
+    printf("Entrez la racine à rechercher : ");
+    
+    char buffer[MAX_LEN];
+    if (!lireLigne(buffer, sizeof(buffer))) {
+        printf("❌ Erreur de lecture\n");
+        return;
+    }
+    
+    NoeudArbre* n = rechercherRacine(ctx.racines, buffer);
+    if (n) {
+        printf("✅ Racine '%s' trouvée !\n", buffer);
+        printf("   Nombre de dérivés : %d\n\n", n->data.nbDerives);
+    } else {
+        printf("❌ Racine '%s' non trouvée\n\n", buffer);
+    }
+}
+
+void menuGenererDerives() {
+    afficherTitre("🔄 GÉNÉRATION DE DÉRIVÉS");
+    
+    const char* racineChoisie = selectionnerRacineParNumero(ctx.racines);
+    if (racineChoisie) {
+        displayBuffer[0] = '\0';
+        genererFamilleMorphologiqueCallback(ctx.racines, ctx.schemes, 
+                                           racineChoisie, appendToBuffer);
+        flushBuffer();
+    } else {
+        printf("❌ Aucune racine sélectionnée\n\n");
+    }
+}
+
+void menuAfficherDerives() {
+    afficherTitre("📖 AFFICHER LES DÉRIVÉS");
+    
+    const char* racineChoisie = selectionnerRacineParNumero(ctx.racines);
+    if (!racineChoisie) {
+        printf("❌ Aucune racine sélectionnée\n\n");
+        return;
+    }
+    
+    NoeudArbre* n = rechercherRacine(ctx.racines, racineChoisie);
+    if (n) {
+        displayBuffer[0] = '\0';
+        afficherDerivesRacine(n, appendToBuffer);
+        flushBuffer();
+    } else {
+        printf("❌ Racine introuvable\n\n");
+    }
+}
+
+void menuValiderMot() {
+    afficherTitre("✅ VALIDATION MORPHOLOGIQUE");
+    
+    printf("Entrez le mot à valider : ");
+    char mot[MAX_LEN];
+    if (!lireLigne(mot, sizeof(mot))) {
+        printf("❌ Erreur de lecture\n");
+        return;
+    }
+    
+    printf("Entrez la racine de référence : ");
+    char racine[MAX_LEN];
+    if (!lireLigne(racine, sizeof(racine))) {
+        printf("❌ Erreur de lecture\n");
+        return;
+    }
+    
+    Scheme* schTrouve = NULL;
+    printf("\n🔍 Validation en cours...\n\n");
+    
+    if (validerMotPourRacine(ctx.racines, ctx.schemes, mot, racine, &schTrouve)) {
+        printf("✅ RÉSULTAT : OUI\n\n");
+        printf("   Le mot '%s' appartient à la racine '%s'\n", mot, racine);
+        if (schTrouve) {
+            printf("   Schème identifié : %s (pattern: %s)\n", 
+                   schTrouve->nom, schTrouve->pattern);
+        }
+        printf("\n");
+    } else {
+        printf("❌ RÉSULTAT : NON\n\n");
+        printf("   Le mot '%s' n'appartient PAS à la racine '%s'\n\n", mot, racine);
+    }
+}
+
+void menuAfficherSchemes() {
+    afficherTitre("📐 SCHÈMES MORPHOLOGIQUES");
+    displayBuffer[0] = '\0';
+    afficherSchemesCallback(ctx.schemes, appendToBuffer);
+    flushBuffer();
+}
+
+void menuChargerSchemes() {
+    afficherTitre("📂 CHARGEMENT DES SCHÈMES");
+    printf("Fichier par défaut : schemes.txt\n");
+    printf("Appuyez sur Entrée pour utiliser le défaut, ou tapez un autre nom : ");
+    
+    char nomFichier[256];
+    if (!lireLigne(nomFichier, sizeof(nomFichier)) || strlen(nomFichier) == 0) {
+        strcpy(nomFichier, "schemes.txt");
+    }
+    
+    int nb = chargerSchemes(ctx.schemes, nomFichier);
+    if (nb > 0) {
+        printf("\n");
+    }
+}
+
+void menuAjouterScheme() {
+    afficherTitre("➕ AJOUTER UN SCHÈME");
+    
+    printf("Nom du schème (ex: فاعل) : ");
+    char nom[MAX_LEN];
+    if (!lireLigne(nom, sizeof(nom))) {
+        printf("❌ Erreur de lecture\n");
+        return;
+    }
+    
+    printf("Pattern (ex: 1ا23) : ");
+    char pattern[MAX_LEN];
+    if (!lireLigne(pattern, sizeof(pattern))) {
+        printf("❌ Erreur de lecture\n");
+        return;
+    }
+    
+    Scheme s = creerScheme(nom, pattern);
+    insererScheme(ctx.schemes, s);
+    printf("✅ Schème '%s' ajouté avec succès\n\n", nom);
+}
+
+void menuModifierScheme() {
+    afficherTitre("✏️  MODIFIER UN SCHÈME");
+    
+    const char* nom = selectionnerSchemeParNumero(ctx.schemes);
+    if (!nom) {
+        printf("❌ Aucun schème sélectionné\n\n");
+        return;
+    }
+    
+    printf("\nNouveau pattern : ");
+    char pattern[MAX_LEN];
+    if (!lireLigne(pattern, sizeof(pattern))) {
+        printf("❌ Erreur de lecture\n");
+        return;
+    }
+    
+    Scheme s = creerScheme(nom, pattern);
+    insererScheme(ctx.schemes, s);
+    printf("✅ Schème '%s' modifié avec succès\n\n", nom);
+}
+
+void menuSupprimerScheme() {
+    afficherTitre("🗑️  SUPPRIMER UN SCHÈME");
+    
+    const char* nom = selectionnerSchemeParNumero(ctx.schemes);
+    if (!nom) {
+        printf("❌ Aucun schème sélectionné\n\n");
+        return;
+    }
+    
+    printf("\n⚠️  Êtes-vous sûr de vouloir supprimer '%s' ? (o/n) : ", nom);
+    char reponse[10];
+    if (!lireLigne(reponse, sizeof(reponse))) {
+        printf("❌ Annulation\n\n");
+        return;
+    }
+    
+    if (reponse[0] == 'o' || reponse[0] == 'O') {
+        if (supprimerScheme(ctx.schemes, nom)) {
+            printf("✅ Schème '%s' supprimé\n\n", nom);
+        } else {
+            printf("❌ Échec de la suppression\n\n");
+        }
+    } else {
+        printf("❌ Suppression annulée\n\n");
+    }
+}
+
+void menuStatistiquesArbre() {
+    afficherTitre("📊 STATISTIQUES DE L'ARBRE AVL");
+    displayBuffer[0] = '\0';
+    afficherStatistiquesArbre(ctx.racines, appendToBuffer);
+    flushBuffer();
+}
+
+void menuStatistiquesHash() {
+    afficherTitre("📊 STATISTIQUES TABLE DE HACHAGE");
+    displayBuffer[0] = '\0';
+    afficherStatistiquesHash(ctx.schemes, appendToBuffer);
+    flushBuffer();
+}
+
+void menuSauvegarderRacines() {
+    afficherTitre("💾 SAUVEGARDE DES RACINES");
+    printf("⚠️  Fonction non implémentée dans cette version\n");
+    printf("   TODO : Parcours in-order de l'arbre + écriture fichier\n\n");
+}
+
+// -----------------------------------------------------------------------------
+// Programme principal
+// -----------------------------------------------------------------------------
+
+int main(int argc, char *argv[]) {
+    // Configuration UTF-8 pour l'arabe
+    setlocale(LC_ALL, "");
+    
+    // Initialisation du contexte
+    ctx.racines = NULL;
+    ctx.schemes = creerTableHash();
+    if (!ctx.schemes) {
+        fprintf(stderr, "❌ Erreur fatale : impossible de créer la table de hachage\n");
+        return 1;
+    }
+
+    // Message de bienvenue
+    printf("\n");
+    printf("╔═══════════════════════════════════════════════════════════╗\n");
+    printf("║                                                           ║\n");
+    printf("║         🌙 MOTEUR MORPHOLOGIQUE ARABE 🌙                 ║\n");
+    printf("║              Mini-Projet Algorithmique                    ║\n");
+    printf("║                                                           ║\n");
+    printf("╚═══════════════════════════════════════════════════════════╝\n");
+    printf("\n");
+
+    // Initialisation des schèmes de base
+    initialiserSchemesDeBase(ctx.schemes);
+
+    // Choix du mode (console ou GUI)
+    printf("Choisissez le mode d'utilisation :\n");
+    printf("  1) Mode console (interface texte)\n");
+    printf("  2) Mode graphique (GUI - si disponible)\n");
+    printf("\nVotre choix : ");
 
     int mode;
     if (scanf("%d", &mode) != 1) {
-        mode = 1;  // par défaut console
+        mode = 1;
+    }
+    viderBuffer();
+
+    // Lancement du mode graphique si disponible
+    if (mode == 2) {
+        if (lancer_gui != NULL) {
+            return lancer_gui(argc, argv);
+        } else {
+            printf("\n❌ Mode graphique non disponible (gui.c non compilé)\n");
+            printf("   Passage en mode console...\n\n");
+        }
     }
 
-    // Si mode graphique : lancer l'interface GTK
-    // if (mode == 2) {
-    //     return lancer_gui(argc, argv);
-    // }
-
-    // Sinon : mode console (ton code original)
-    Contexte ctx;
-    ctx.racines = NULL;
-    ctx.schemes = creerTableHash();
-    if (!ctx.schemes) return 1;
-    initialiserSchemesDeBase(ctx.schemes);
-
+    // Boucle principale du menu console
     int choix;
-    char buffer[MAX_LEN];
-    char mot[MAX_LEN];
-
     do {
         afficherMenu();
+        
         if (scanf("%d", &choix) != 1) {
-            // vider l'entrée si saisie invalide
-            int c;
-            while ((c = getchar()) != '\n' && c != EOF);
+            viderBuffer();
             choix = -1;
         }
+        viderBuffer();
 
         switch (choix) {
-            case 1:
-                chargerRacinesDepuisFichier(&ctx.racines, "racines.txt");
-                printf("Racines chargées.\n");
-                break;
-
-            case 2:
-                afficherRacines(ctx.racines);
-                break;
-
-            case 4: {
-                const char* racineChoisie = selectionnerRacineParNumero(ctx.racines);
-                if (racineChoisie) {
-                    printf("\nGénération des dérivés pour la racine sélectionnée : %s\n", racineChoisie);
-                    genererFamilleMorphologique(ctx.racines, ctx.schemes, racineChoisie);
-                } else {
-                    printf("Aucune racine sélectionnée.\n");
-                }
-                break;
-            }
-
-            case 5: {
-                printf("========================================\n");
-                printf("Vérifier si un mot appartient à une racine\n");
-                printf("========================================\n");
-                printf("Entrer la racine: ");
-                scanf("%s", buffer);
-                printf("Entrer le mot à vérifier: ");
-                scanf("%s", mot);
-                Scheme* s = NULL;
-                if (validerMotPourRacine(ctx.racines, ctx.schemes, mot, buffer, &s)) {
-                    printf("\n✓ OUI, le mot appartient à la racine.\n");
-                    printf("  Racine: %s\n", buffer);
-                    printf("  Mot: %s\n", mot);
-                    if (s) printf("  Schème utilisé: %s\n", s->nom);
-                } else {
-                    printf("\n✗ NON, le mot ne correspond pas à la racine.\n");
-                    printf("  Racine testée: %s\n", buffer);
-                    printf("  Mot testé: %s\n", mot);
-                }
-                break;
-            }
-
-            case 8:
-                afficherSchemes(ctx.schemes);
-                break;
-
-            case 3:
-                printf("Entrer la nouvelle racine: ");
-                scanf("%s", buffer);
-                ctx.racines = insererRacine(ctx.racines, buffer);
-                printf("Racine ajoutée.\n");
-                break;
-
-            case 9: {
-                char nom[MAX_LEN], pattern[MAX_LEN];
-                printf("Entrer le nom du schème: ");
-                scanf("%s", nom);
-                printf("Entrer le pattern (ex. م12و3): ");
-                scanf("%s", pattern);
-                Scheme s = creerScheme(nom, pattern);
-                insererScheme(ctx.schemes, s);
-                printf("Schème ajouté.\n");
-                break;
-            }
-
-            case 10: {
-                char nom[MAX_LEN], new_pattern[MAX_LEN];
-                printf("Entrer le nom du schème à modifier: ");
-                scanf("%s", nom);
-                if (chercherScheme(ctx.schemes, nom)) {
-                    printf("Entrer le nouveau pattern: ");
-                    scanf("%s", new_pattern);
-                    Scheme s = creerScheme(nom, new_pattern);
-                    insererScheme(ctx.schemes, s);  // Remplace
-                    printf("Schème modifié.\n");
-                } else {
-                    printf("Schème introuvable.\n");
-                }
-                break;
-            }
-
-            case 11:
-                printf("Entrer le nom du schème à supprimer: ");
-                scanf("%s", buffer);
-                supprimerScheme(ctx.schemes, buffer);
-                printf("Schème supprimé si existant.\n");
-                break;
-
-            case 7:
-                printf("========================================\n");
-                printf("Afficher les dérivés d'une racine\n");
-                printf("========================================\n");
-                printf("Entrer la racine: ");
-                scanf("%s", buffer);
-                NoeudArbre* n = rechercherRacine(ctx.racines, buffer);
-                if (n) {
-                    printf("\n");
-                    afficherDerivesRacine(&n->data);
-                    printf("\n");
-                } else {
-                    printf("✗ Racine introuvable.\n");
-                }
-                break;
-
-            case 6: {
-                printf("========================================\n");
-                printf("Décomposition du mot\n");
-                printf("========================================\n");
-                printf("Entrer le mot à décomposer: ");
-                scanf("%s", mot);
-                
-                char racineTrouvee[MAX_LEN] = {0};
-                char schemeTrouve[MAX_LEN] = {0};
-                
-                if (decomposerMot(ctx.racines, ctx.schemes, mot, racineTrouvee, schemeTrouve)) {
-                    printf("\n✓ Décomposition réussie!\n");
-                    printf("====================================\n");
-                    printf("Mot: %s\n", mot);
-                    printf("Racine identifiée: %s\n", racineTrouvee);
-                    printf("Schème utilisé: %s\n", schemeTrouve);
-                    printf("====================================\n");
-                } else {
-                    printf("\n✗ Décomposition impossible.\n");
-                    printf("====================================\n");
-                    printf("Le mot '%s' n'a pas pu être décomposé.\n", mot);
-                    printf("Vérifiez que:\n");
-                    printf("  • Les racines ont été chargées (option 1)\n");
-                    printf("  • Le mot est un dérivé valide\n");
-                    printf("====================================\n");
-                }
-                break;
-            }
-
+            case 1:  menuChargerRacines();        break;
+            case 2:  menuAfficherRacines();       break;
+            case 3:  menuAjouterRacine();         break;
+            case 4:  menuRechercherRacine();      break;
+            case 5:  menuGenererDerives();        break;
+            case 6:  menuAfficherDerives();       break;
+            case 7:  menuValiderMot();            break;
+            case 8:  menuAfficherSchemes();       break;
+            case 9:  menuChargerSchemes();        break;
+            case 10: menuAjouterScheme();         break;
+            case 11: menuModifierScheme();        break;
+            case 12: menuSupprimerScheme();       break;
+            case 13: menuStatistiquesArbre();     break;
+            case 14: menuStatistiquesHash();      break;
+            case 15: menuSauvegarderRacines();    break;
+            
             case 0:
-                printf("Au revoir.\n");
+                printf("\n");
+                afficherTitre("👋 AU REVOIR");
+                printf("Merci d'avoir utilisé le moteur morphologique arabe !\n");
+                printf("مع السلامة\n\n");
                 break;
-
-            case 12: {
-                printf("\n====================================\n");
-                printf("  VERBES CREUX (أجوف - AJWAF)\n");
-                printf("====================================\n");
-                printf("  a) Générer les dérivés d'une racine Ajwaf\n");
-                printf("  b) Vérifier si un mot appartient à une racine Ajwaf\n");
-                printf("  c) Décomposer un mot Ajwaf\n");
-                printf("  d) Afficher les dérivés d'une racine Ajwaf\n");
-                printf("  0) Retour au menu principal\n");
-                printf("Votre choix (a/b/c/d/0): ");
-
-                char saisie[10];
-                scanf("%s", saisie);
-
-                if (strcmp(saisie, "a") == 0) {
-                    // Générer les dérivés d'une racine Ajwaf
-                    const char* racineChoisie = selectionnerRacineParNumero(ctx.racines);
-                    if (racineChoisie) {
-                        if (estAjwaf(racineChoisie)) {
-                            printf("\n✓ La racine %s est de type Ajwaf\n", racineChoisie);
-                            printf("Génération des dérivés pour cette racine Ajwaf:\n");
-                            genererFamilleAjwaf(ctx.racines, ctx.schemes, racineChoisie);
-                        } else {
-                            printf("\n✗ La racine %s n'est pas de type Creux (Ajwaf).\n", racineChoisie);
-                            printf("Pour être Ajwaf, la deuxième lettre (R2) doit être و (waw) ou ي (ya).\n");
-                        }
-                    } else {
-                        printf("Aucune racine sélectionnée.\n");
-                    }
-                }
-                else if (strcmp(saisie, "b") == 0) {
-                    // Vérifier si un mot appartient à une racine Ajwaf
-                    printf("========================================\n");
-                    printf("Vérifier un mot avec racine Ajwaf\n");
-                    printf("========================================\n");
-                    printf("Entrer la racine: ");
-                    scanf("%s", buffer);
-                    
-                    if (!estAjwaf(buffer)) {
-                        printf("✗ La racine %s n'est pas de type Creux (Ajwaf).\n", buffer);
-                    } else {
-                        printf("Entrer le mot à vérifier: ");
-                        scanf("%s", mot);
-                        
-                        Scheme* s = NULL;
-                        if (validerMotPourRacineAjwaf(ctx.racines, ctx.schemes, mot, buffer, &s)) {
-                            printf("\n✓ OUI, le mot appartient à la racine Ajwaf.\n");
-                            printf("  Racine: %s\n", buffer);
-                            printf("  Mot: %s\n", mot);
-                            if (s) printf("  Schème utilisé: %s\n", s->nom);
-                        } else {
-                            printf("\n✗ NON, le mot ne correspond pas à la racine.\n");
-                            printf("  Racine testée: %s\n", buffer);
-                            printf("  Mot testé: %s\n", mot);
-                        }
-                    }
-                }
-                else if (strcmp(saisie, "c") == 0) {
-                    // Décomposer un mot Ajwaf
-                    printf("========================================\n");
-                    printf("Décomposition d'un mot Ajwaf\n");
-                    printf("========================================\n");
-                    printf("Entrer le mot à décomposer: ");
-                    scanf("%s", mot);
-                    
-                    char racineTrouvee[MAX_LEN] = {0};
-                    char schemeTrouve[MAX_LEN] = {0};
-                    
-                    if (decomposerMotAjwaf(ctx.racines, ctx.schemes, mot, racineTrouvee, schemeTrouve)) {
-                        printf("\n✓ Décomposition réussie (verbe Ajwaf)!\n");
-                        printf("====================================\n");
-                        printf("Mot: %s\n", mot);
-                        printf("Racine identifiée: %s (Ajwaf)\n", racineTrouvee);
-                        printf("Schème utilisé: %s\n", schemeTrouve);
-                        printf("====================================\n");
-                    } else {
-                        printf("\n✗ Décomposition impossible.\n");
-                        printf("====================================\n");
-                        printf("Le mot '%s' n'a pas pu être décomposé.\n", mot);
-                        printf("Vérifiez que:\n");
-                        printf("  • Les racines ont été chargées (option 1)\n");
-                        printf("  • Le mot est un dérivé valide d'une racine Ajwaf\n");
-                        printf("  • La deuxième lettre de la racine est و ou ي\n");
-                        printf("====================================\n");
-                    }
-                }
-                else if (strcmp(saisie, "d") == 0) {
-                    // Afficher les dérivés d'une racine Ajwaf
-                    printf("========================================\n");
-                    printf("Afficher les dérivés d'une racine Ajwaf\n");
-                    printf("========================================\n");
-                    printf("Entrer la racine: ");
-                    scanf("%s", buffer);
-                    
-                    if (!estAjwaf(buffer)) {
-                        printf("✗ La racine %s n'est pas de type Creux (Ajwaf).\n", buffer);
-                    } else {
-                        NoeudArbre* n = rechercherRacine(ctx.racines, buffer);
-                        if (n) {
-                            printf("\n");
-                            afficherDerivesRacine(&n->data);
-                            printf("\n");
-                        } else {
-                            printf("✗ Racine introuvable.\n");
-                        }
-                    }
-                }
-                else if (strcmp(saisie, "0") == 0) {
-                    // Retour au menu principal - rien à faire
-                }
-                else {
-                    printf("Choix inexistant.\n");
-                }
-                break;
-            }
-
+                
             default:
-                printf("Choix invalide.\n");
+                printf("\n❌ Choix invalide. Veuillez entrer un nombre entre 0 et 15.\n\n");
         }
 
     } while (choix != 0);
 
+    // Libération de la mémoire
     libererArbre(ctx.racines);
     libererTableHash(ctx.schemes);
 
