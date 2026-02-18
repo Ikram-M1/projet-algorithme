@@ -1,0 +1,21 @@
+#!/bin/bash
+# Script de test pour les verbes creux (Ajwaf)
+
+echo "Test des verbes creux (Ajwaf)"
+echo "=============================="
+
+# Les entrées: 1 (charger), 12 (ajwaf), a (générer), 0 (quitter)
+(
+sleep 0.5
+echo "1"         # Charger racines
+sleep 0.5
+echo "12"        # Menu Ajwaf
+sleep 0.5
+echo "a"         # Générer dérivés 
+sleep 0.5
+echo "1"         # Première racine (قول)
+sleep 0.5
+echo "0"         # Retour
+sleep 0.5
+echo "0"         # Quitter
+) | ./moteur.exe
