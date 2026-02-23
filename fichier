@@ -1,0 +1,2 @@
+export GTK_IM_MODULE=ibus
+ibus-daemon -drx

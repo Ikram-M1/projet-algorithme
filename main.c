@@ -154,7 +154,7 @@ void initialiserSchemesDeBase(TableHash* t) {
 void afficherMenu() {
     printf("\n");
     printf("╔═══════════════════════════════════════════════════════════╗\n");
-    printf("║         🌙 MOTEUR MORPHOLOGIQUE ARABE - القاموس         ║\n");
+    printf("║         🌙 MOTEUR MORPHOLOGIQUE ARABE        ║\n");
     printf("╚═══════════════════════════════════════════════════════════╝\n");
     printf("\n");
     printf("  📚 GESTION DES RACINES\n");
@@ -177,10 +177,10 @@ void afficherMenu() {
     printf("    1️⃣1️⃣ Modifier un schème\n");
     printf("    1️⃣2️⃣ Supprimer un schème\n");
     printf("\n");
-    printf("  📊 STATISTIQUES\n");
-    printf("    1️⃣3️⃣ Afficher statistiques de l'arbre\n");
-    printf("    1️⃣4️⃣ Afficher statistiques de la table de hachage\n");
-    printf("\n");
+    // printf("  📊 STATISTIQUES\n");
+    // printf("    1️⃣3️⃣ Afficher statistiques de l'arbre\n");
+    // printf("    1️⃣4️⃣ Afficher statistiques de la table de hachage\n");
+    // printf("\n");
     printf("  💾 SAUVEGARDE\n");
     printf("    1️⃣5️⃣ Sauvegarder les racines\n");
     printf("\n");
@@ -414,19 +414,19 @@ void menuSupprimerScheme() {
     }
 }
 
-void menuStatistiquesArbre() {
-    afficherTitre("📊 STATISTIQUES DE L'ARBRE AVL");
-    displayBuffer[0] = '\0';
-    afficherStatistiquesArbre(ctx.racines, appendToBuffer);
-    flushBuffer();
-}
+// void menuStatistiquesArbre() {
+//     afficherTitre("📊 STATISTIQUES DE L'ARBRE AVL");
+//     displayBuffer[0] = '\0';
+//     afficherStatistiquesArbre(ctx.racines, appendToBuffer);
+//     flushBuffer();
+// }
 
-void menuStatistiquesHash() {
-    afficherTitre("📊 STATISTIQUES TABLE DE HACHAGE");
-    displayBuffer[0] = '\0';
-    afficherStatistiquesHash(ctx.schemes, appendToBuffer);
-    flushBuffer();
-}
+// void menuStatistiquesHash() {
+//     afficherTitre("📊 STATISTIQUES TABLE DE HACHAGE");
+//     displayBuffer[0] = '\0';
+//     afficherStatistiquesHash(ctx.schemes, appendToBuffer);
+//     flushBuffer();
+// }
 
 void menuSauvegarderRacines() {
     afficherTitre("💾 SAUVEGARDE DES RACINES");
@@ -465,8 +465,8 @@ int main(int argc, char *argv[]) {
 
     // Choix du mode (console ou GUI)
     printf("Choisissez le mode d'utilisation :\n");
-    printf("  1) Mode console (interface texte)\n");
-    printf("  2) Mode graphique (GUI - si disponible)\n");
+    printf("  1) Mode console \n");
+    printf("  2) Mode graphique \n");
     printf("\nVotre choix : ");
 
     int mode;
@@ -509,8 +509,8 @@ int main(int argc, char *argv[]) {
             case 10: menuAjouterScheme();         break;
             case 11: menuModifierScheme();        break;
             case 12: menuSupprimerScheme();       break;
-            case 13: menuStatistiquesArbre();     break;
-            case 14: menuStatistiquesHash();      break;
+            // case 13: menuStatistiquesArbre();     break;
+            // case 14: menuStatistiquesHash();      break;
             case 15: menuSauvegarderRacines();    break;
             
             case 0:

@@ -382,6 +382,158 @@ static void on_show_roots_clicked(GtkButton *btn, gpointer data) {
         free(tab);
     }
 }
+static void on_frequence_derive_clicked(GtkButton *btn, gpointer data) {
+    (void)btn; (void)data;
+
+    // ── Dialogue ──────────────────────────────────────────────
+    GtkWidget *dialog = gtk_dialog_new_with_buttons(
+        "📊 Fréquence d'un dérivé",
+        NULL, GTK_DIALOG_MODAL,
+        "Annuler",  GTK_RESPONSE_CANCEL,
+        "Chercher", GTK_RESPONSE_OK,
+        NULL
+    );
+
+    GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+    gtk_container_set_border_width(GTK_CONTAINER(content), 20);
+    gtk_widget_set_size_request(content, 420, 220);
+
+    // ── Champ racine ──────────────────────────────────────────
+    GtkWidget *label_r = gtk_label_new("Entrez la racine (ex: كتب) :");
+    gtk_box_pack_start(GTK_BOX(content), label_r, FALSE, FALSE, 5);
+
+    GtkWidget *entry_racine = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(entry_racine), "ex: كتب");
+    gtk_widget_set_size_request(entry_racine, -1, 35);
+    gtk_box_pack_start(GTK_BOX(content), entry_racine, FALSE, FALSE, 5);
+
+    // ── ComboBox schèmes ──────────────────────────────────────
+    GtkWidget *label_s = gtk_label_new("Choisissez un schème :");
+    gtk_box_pack_start(GTK_BOX(content), label_s, FALSE, FALSE, 10);
+
+    GtkWidget *combo_scheme = gtk_combo_box_text_new();
+    for (int i = 0; i < TAILLE_TABLE; i++) {
+        EntreeHash *e = ctx.schemes->cases[i];
+        while (e) {
+            gtk_combo_box_text_append_text(
+                GTK_COMBO_BOX_TEXT(combo_scheme), e->cle);
+            e = e->suivant;
+        }
+    }
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combo_scheme), 0);
+    gtk_box_pack_start(GTK_BOX(content), combo_scheme, FALSE, FALSE, 5);
+
+    gtk_widget_show_all(dialog);
+    gint result = gtk_dialog_run(GTK_DIALOG(dialog));
+
+    if (result == GTK_RESPONSE_OK) {
+
+        const char *racine  = gtk_entry_get_text(GTK_ENTRY(entry_racine));
+        gchar      *nom_sch = gtk_combo_box_text_get_active_text(
+                                  GTK_COMBO_BOX_TEXT(combo_scheme));
+        clear_text();
+
+        GtkTextBuffer *buf =
+            gtk_text_view_get_buffer(GTK_TEXT_VIEW(result_text));
+        GtkTextIter iter;
+        gtk_text_buffer_get_end_iter(buf, &iter);
+
+        // ── Tags couleurs ─────────────────────────────────────
+        GtkTextTag *tag_err = gtk_text_buffer_create_tag(buf, NULL,
+            "foreground", "#ef4444",
+            "weight", PANGO_WEIGHT_BOLD, NULL);
+
+        GtkTextTag *tag_val = gtk_text_buffer_create_tag(buf, NULL,
+            "foreground", "#1a472a",
+            "weight", PANGO_WEIGHT_BOLD,
+            "scale", 1.2, NULL);
+
+        char line[256];
+
+        // ── Vérification 1 : racine non vide ─────────────────
+        if (strlen(racine) == 0) {
+            gtk_text_buffer_insert_with_tags(buf, &iter,
+                "  ❌ Entrez une racine\n", -1, tag_err, NULL);
+            g_free(nom_sch);
+            gtk_widget_destroy(dialog);
+            return;
+        }
+
+        // ── Vérification 2 : racine existe dans l'arbre ───────
+        NoeudArbre *noeud = rechercherRacine(ctx.racines, racine);
+        if (!noeud) {
+            snprintf(line, sizeof(line),
+                "  ❌ Racine '%s' introuvable dans l'arbre\n"
+                "  → Chargez d'abord les racines\n", racine);
+            gtk_text_buffer_insert_with_tags(buf, &iter,
+                line, -1, tag_err, NULL);
+            g_free(nom_sch);
+            gtk_widget_destroy(dialog);
+            return;
+        }
+
+        // ── Vérification 3 : schème existe ───────────────────
+        Scheme *sch = chercherScheme(ctx.schemes, nom_sch);
+        if (!sch) {
+            gtk_text_buffer_insert_with_tags(buf, &iter,
+                "  ❌ Schème introuvable\n", -1, tag_err, NULL);
+            g_free(nom_sch);
+            gtk_widget_destroy(dialog);
+            return;
+        }
+
+        // ── Génération du mot dérivé ──────────────────────────
+        char *mot_derive = genererMot(racine, sch);
+        if (!mot_derive) {
+            gtk_text_buffer_insert_with_tags(buf, &iter,
+                "  ❌ Génération impossible (racine invalide ?)\n",
+                -1, tag_err, NULL);
+            g_free(nom_sch);
+            gtk_widget_destroy(dialog);
+            return;
+        }
+
+        // ── ✅ CORRECTION : incrémenter la fréquence ──────────
+        // ajouterDerive() fait deux choses :
+        // - si le mot existe déjà → incrémente sa fréquence
+        // - si le mot est nouveau → l'ajoute avec fréquence = 1
+        ajouterDerive(noeud, mot_derive);
+
+        // ── Lire la fréquence mise à jour ─────────────────────
+        int freq  = 0;
+        Derive *d = noeud->data.derives;
+        while (d) {
+            if (strcmp(d->mot, mot_derive) == 0) {
+                freq = d->frequence;  // valeur après incrément
+                break;
+            }
+            d = d->suivant;
+        }
+
+        // ── Afficher les 3 lignes demandées ───────────────────
+        gtk_text_buffer_insert(buf, &iter, "\n", -1);
+
+        snprintf(line, sizeof(line),
+            "  Racine              : %s\n", racine);
+        gtk_text_buffer_insert_with_tags(buf, &iter,
+            line, -1, tag_val, NULL);
+
+        snprintf(line, sizeof(line),
+            "  Dérivé              : %s\n", mot_derive);
+        gtk_text_buffer_insert_with_tags(buf, &iter,
+            line, -1, tag_val, NULL);
+
+        snprintf(line, sizeof(line),
+            "  Fréquence           : %d fois\n", freq);
+        gtk_text_buffer_insert_with_tags(buf, &iter,
+            line, -1, tag_val, NULL);
+
+        free(mot_derive);
+        g_free(nom_sch);
+    }
+
+    gtk_widget_destroy(dialog);
+}
 
 static void on_generate_clicked(GtkButton *btn, gpointer entry) {
     (void)btn;
@@ -1230,7 +1382,18 @@ static void activate(GtkApplication *app, gpointer user_data) {
     gtk_box_pack_start(GTK_BOX(row2), btn_validate, TRUE, TRUE, 0);
    
     gtk_box_pack_start(GTK_BOX(main_box), frame2, FALSE, FALSE, 8);
-   
+    // Dans row2, après btn_validate :
+GtkWidget *btn_freq =
+    gtk_button_new_with_label("📊 Fréquence dérivé");
+gtk_style_context_add_class(
+    gtk_widget_get_style_context(btn_freq), "info");
+gtk_box_pack_start(GTK_BOX(row2), btn_freq, TRUE, TRUE, 0);
+
+// Dans les g_signal_connect :
+
+
+
+
     // SECTION 3
     GtkWidget *frame3 = gtk_frame_new(NULL);
     gtk_widget_set_name(frame3, "section-frame");
@@ -1316,6 +1479,8 @@ static void activate(GtkApplication *app, gpointer user_data) {
     g_signal_connect(btn_gen_dynamique, "clicked", G_CALLBACK(on_generation_dynamique_clicked), NULL);
     g_signal_connect(btn_auto_identify, "clicked", G_CALLBACK(on_auto_identifier_clicked), NULL);
     g_signal_connect(btn_verifier, "clicked", G_CALLBACK(on_verifier_appartenance_clicked), NULL);
+    g_signal_connect(btn_freq, "clicked",
+                 G_CALLBACK(on_frequence_derive_clicked), NULL);
    
     // Message d'accueil épuré
     append_text("\n\n");
