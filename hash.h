@@ -42,7 +42,7 @@ void insererScheme(TableHash* t, Scheme s);
  * 
  * Complexité : O(1) en moyenne, O(n) au pire cas
  */
-Scheme* chercherScheme(TableHash* t, const char* nom);
+Scheme* chercherScheme(const TableHash* t, const char* nom);
 
 /**
  * Supprime un schème de la table par son nom.

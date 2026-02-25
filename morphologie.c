@@ -338,7 +338,7 @@ void genererFamilleMorphologiqueCallback(NoeudArbre* arbre, TableHash* t,
         return;
     }
 
-    char line[300];
+    char line[768];
     snprintf(line, sizeof(line),
              "\n╔═══════════════════════════════════════════════════════════╗\n"
              "║   🔄 GÉNÉRATION FAMILLE MORPHOLOGIQUE                    ║\n"

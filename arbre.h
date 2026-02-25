@@ -45,6 +45,12 @@ NoeudArbre* insererRacine(NoeudArbre* racine, const char* nouvelleRacine);
  */
 NoeudArbre* rechercherRacine(NoeudArbre* racine, const char* cle);
 
+/**
+ * Charge les racines depuis un fichier texte (une racine par ligne).
+ * Déclarée ici pour rendre la fonction accessible aux modules GUI.
+ */
+void chargerRacinesDepuisFichier(NoeudArbre** arbre, const char* nomFichier);
+
 // -----------------------------------------------------------------------------
 // Fonctions utilitaires AVL (publiques pour inspection)
 // -----------------------------------------------------------------------------

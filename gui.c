@@ -654,7 +654,7 @@ static void on_load_schemes_clicked(GtkButton *btn, gpointer data) {
     
     char buf[128];
     gtk_text_buffer_insert_with_tags(buffer, &iter, "✓ ", -1, tag_success, NULL);
-    snprintf(buf, sizeof(buf), "%d schèmes chargés\n");
+    snprintf(buf, sizeof(buf), "%d schèmes chargés\n", nb);
     gtk_text_buffer_insert_with_tags(buffer, &iter, buf, -1, tag_success, NULL);
 }
 

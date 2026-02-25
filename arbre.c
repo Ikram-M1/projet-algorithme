@@ -273,7 +273,7 @@
             append(line);
         }
 
-        char footer[100];
+        char footer[256];
         snprintf(footer, sizeof(footer), "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📊 Total : %d racine(s)\n\n", count);
         append(footer);
 
@@ -349,7 +349,7 @@
             return;
         }
 
-        char line[250];
+        char line[512];
         snprintf(line, sizeof(line), 
                 "\n╔═══════════════════════════════════════════════════╗\n"
                 "║   📖 Dérivés de : %s\n"
@@ -399,7 +399,7 @@
         int nbDerives = compterDerivesTotaux(racine);
         int hauteurMax = hauteur(racine);
         
-        char stats[400];
+        char stats[1024];
         snprintf(stats, sizeof(stats),
                 "\n╔═══════════════════════════════════════════════════╗\n"
                 "║          📊 STATISTIQUES DE L'ARBRE              ║\n"

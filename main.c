@@ -480,7 +480,16 @@ int main(int argc, char *argv[]) {
         if (lancer_gui != NULL) {
             return lancer_gui(argc, argv);
         } else {
-            printf("\n❌ Mode graphique non disponible (gui.c non compilé)\n");
+            // Si le GUI natif n'a pas été compilé (GTK absent),
+            // ouvrir l'interface HTML de secours dans le navigateur.
+            printf("\n⚠️  Mode graphique natif non disponible (GTK non installé)\n");
+#ifdef _WIN32
+            printf("   Ouverture de interface.html dans le navigateur par défaut...\n");
+            system("start interface.html");
+#else
+            printf("   Ouverture de interface.html dans le navigateur par défaut (xdg-open)...\n");
+            system("xdg-open interface.html &");
+#endif
             printf("   Passage en mode console...\n\n");
         }
     }

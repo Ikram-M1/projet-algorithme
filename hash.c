@@ -143,7 +143,7 @@ void insererScheme(TableHash* t, Scheme s) {
 // Recherche d'un schème par nom
 // -----------------------------------------------------------------------------
 
-Scheme* chercherScheme(TableHash* t, const char* nom) {
+Scheme* chercherScheme(const TableHash* t, const char* nom) {
     if (!t || !nom) return NULL;
 
     // Nettoyage du nom recherché
@@ -153,7 +153,7 @@ Scheme* chercherScheme(TableHash* t, const char* nom) {
     trimString(nomClean);
 
     unsigned int idx = hacher(nomClean);
-    EntreeHash* e = t->cases[idx];
+    EntreeHash* e = ((TableHash*)t)->cases[idx];
 
     while (e) {
         if (strcmp(e->cle, nomClean) == 0) {
@@ -313,7 +313,7 @@ void afficherStatistiquesHash(const TableHash* t, AppendFunc append) {
         }
     }
 
-    char stats[500];
+    char stats[2048];
     float tauxRemplissage = (float)casesUtilisees / TAILLE_TABLE * 100.0f;
     float facteurCharge = (float)t->nbSchemes / TAILLE_TABLE;
     
